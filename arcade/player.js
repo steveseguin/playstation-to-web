@@ -46,7 +46,12 @@ else {
       8: { value: 'z', value2: 'BUTTON_1' },
       9: { value: 'a', value2: 'BUTTON_3' },
     }, 1: {}, 2: {}, 3: {} },
-    EJS_onGameStart: () => send('arcade-started'),
+    EJS_onGameStart: () => {
+      // Pinned 4.2.3 opens its menu on startup, covering the touch controls.
+      // Keep it available via the menu button, but start with the game visible.
+      window.EJS_emulator.menu.close();
+      send('arcade-started');
+    },
     EJS_onLoadState: () => send('arcade-started'),
   });
   const loader = document.createElement('script');

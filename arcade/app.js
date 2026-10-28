@@ -95,9 +95,7 @@ addEventListener('message', event => {
   if (event.data?.type === 'arcade-started') {
     clearTimeout(loadTimer);
     $('session-label').textContent = 'NOW PLAYING';
-    status(matchMedia('(pointer: coarse)').matches
-      ? 'Game loaded. Tap × to launch. Use the direction pad to move; Start pauses.'
-      : 'Game loaded. Click the screen, then press X to launch. Enter pauses.');
+    status('Game loaded. Press X or tap × to launch. Enter / Start pauses.');
     active.frame.focus();
   } else if (event.data?.type === 'arcade-error') {
     clearTimeout(loadTimer);

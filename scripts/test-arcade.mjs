@@ -86,6 +86,7 @@ try {
   await mobile.locator('#play').click();
   await mobile.waitForFunction(() => document.getElementById('session-label').textContent === 'NOW PLAYING', null, { timeout: 90000 });
   const mobileFrame = mobile.frames().find(frame => frame.url().includes('player.html'));
+  assert.equal(await mobileFrame.locator('.ejs_menu_bar').evaluate(el => el.classList.contains('ejs_menu_bar_hidden')), true, 'startup menu must not cover touch controls');
   const cross = mobileFrame.locator('.ejs_virtualGamepad_button.b_cross');
   await cross.waitFor({ state: 'visible' });
   await cross.scrollIntoViewIfNeeded();
@@ -95,6 +96,10 @@ try {
   await mobile.waitForTimeout(120);
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await mobile.waitForTimeout(500);
+  const mobileCanvas = mobileFrame.locator('canvas').first();
+  const touchLaunched = await mobileCanvas.screenshot();
+  await mobile.waitForTimeout(400);
+  assert.ok(!touchLaunched.equals(await mobileCanvas.screenshot()), 'touch launch animates the game');
   await mobile.screenshot({ path: 'test-results/arcade-mobile-playing.png', fullPage: true });
   const offline = await browser.newPage();
   await offline.route('https://cdn.emulatorjs.org/**', route => route.abort());
