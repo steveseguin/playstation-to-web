@@ -53,7 +53,14 @@ else {
       // Pinned 4.2.3 opens its menu on startup, covering the touch controls.
       // Keep it available via the menu button, but start with the game visible.
       window.EJS_emulator.menu.close();
-      send('arcade-started');
+      if (touchControls) {
+        // The pinned player's resize pass schedules a hide after 250 ms when
+        // its own touch probe fails. Apply our capability result after that.
+        setTimeout(() => {
+          window.EJS_emulator.toggleVirtualGamepad(true);
+          send('arcade-started');
+        }, 300);
+      } else send('arcade-started');
     },
     EJS_onLoadState: () => send('arcade-started'),
   });
