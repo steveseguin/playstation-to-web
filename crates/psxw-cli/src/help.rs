@@ -3,11 +3,7 @@
 use anyhow::{Result, bail};
 use std::io::IsTerminal;
 
-const BANNER: &str = r"   ____  ______  __  _       _____   _____ __  ___
-  / __ \/ ___/ |/ / | |     / /   | / ___//  |/  /
- / /_/ /\__ \|   /  | | /| / / /| | \__ \/ /|_/ /
-/ ____/___/ /   |   | |/ |/ / ___ |___/ / /  / /
-/_/    /____/_/|_|   |__/|__/_/  |_/____/_/  /_/";
+const BANNER: &str = "  PlayStation to Web";
 
 const WIDTH: usize = 80;
 const DESCRIPTION_COLUMN: usize = 32;
@@ -36,9 +32,9 @@ pub fn show(args: &[String]) -> Result<bool> {
 
 fn decorate(text: &str, color: bool) -> String {
     if !color {
-        return format!("\n{BANNER}\n\n  PSX WASM // MIPS IN. WASM OUT.\n\n{text}");
+        return format!("\n{BANNER}\n\n  Play, debug, and remix PlayStation games in your browser.\n\n{text}");
     }
-    let mut out = format!("\n\x1b[1;36m{BANNER}\x1b[0m\n\n  \x1b[1;35mPSX WASM // MIPS IN. WASM OUT.\x1b[0m\n\n");
+    let mut out = format!("\n\x1b[1;36m{BANNER}\x1b[0m\n\n  \x1b[1;35mPlay, debug, and remix PlayStation games in your browser.\x1b[0m\n\n");
     for line in text.lines() {
         if !line.starts_with(' ') && line.ends_with(':') {
             out.push_str(&format!("\x1b[1;35m{line}\x1b[0m\n"));
@@ -207,7 +203,7 @@ fn render(topic: &[&str]) -> Result<String> {
 }
 
 fn overview() -> String {
-    page("<command> [arguments] [options]", "Turn PlayStation decompilations into WebAssembly.", &[
+    page("<command> [arguments] [options]", "Build supported PlayStation games for the web and modify them live with JavaScript mods.", &[
         ("Setup", &[
             ("toolchain fetch", "Download and verify the pinned toolchain."),
             ("inputs sync", "Snapshot pinned game, SDK and mod repositories."),
@@ -291,7 +287,7 @@ fn mods() -> String {
             ("show <symbol>", "Inspect a symbol's type, source and tier."),
             ("writers <symbol>", "Find code that writes to a symbol."),
         ]),
-        ("In the psx-wasm project", &[
+        ("In the PlayStation to Web project", &[
             ("check <game> <dir>...", "Validate mod directories."),
             ("build <game> <dir>...", "Build mod directories."),
             ("test <game> <dir>...", "Run tests for mod directories."),

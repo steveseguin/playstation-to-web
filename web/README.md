@@ -1,4 +1,20 @@
-# web
+# PlayStation to Web: browser player and live mods
+
+Play supported PlayStation games in your browser and change them while you play.
+The player supports keyboard and gamepad input, sound, saved games, and live
+JavaScript mods in a build with mod support enabled.
+
+To try a live change, start the game, choose a script mod in the **Live mods**
+panel, and use **Swap in** to apply it to the running game. You can replace it
+again as you refine the mod, without restarting your session. Developers can
+also use `psxw mod watch <mod|set>` to reload a script whenever it is saved.
+See [Script mods](#script-mods) for the API and examples.
+
+The first supported target is Harvest Moon: Back to Nature. You need a browser
+build for that game and its matching disc image. See the
+[project overview](../README.md) and [developer setup](../README.slop.md).
+
+## Browser implementation
 
 The browser host (M5), plain ES modules with no build step:
 

@@ -1,4 +1,9 @@
-# psx-wasm
+# PlayStation to Web: developer guide
+
+Play, debug, and modify supported PlayStation games in your browser, including
+live JavaScript mod changes while playing. See the [project overview](README.md)
+for a plain-language introduction and the [live mod guide](web/README.md#script-mods)
+for loading and reloading mods. The command-line tool remains `psxw`.
 
 A toolchain that turns a matching PlayStation decompilation, plus a
 decompiled PsyQ SDK, into a WebAssembly build that runs natively in a
@@ -6,12 +11,16 @@ browser or webview. It is not an emulator: the game's C is compiled to wasm,
 the PSX memory map is preserved, and Rust services replace the hardware at
 the SDK boundary.
 
-Status: M0–M3 done; M4–M8 in progress. btn builds into `game.wasm` and
-boots from the user's disc (`psxw.local.toml`) into its main loop,
-deterministically, natively and in the browser.
+The first target, Harvest Moon: Back to Nature (`btn`), builds into `game.wasm`
+and runs from the user's disc (`psxw.local.toml`), natively and in the browser.
+Browser builds support audio, saves, debugging, and live script mods.
 Milestones and their state: [plans/README.md](plans/README.md). The design
 is in [docs/design.md](docs/design.md); decisions in
 [plans/decisions.md](plans/decisions.md).
+
+The examples below use a Unix-style shell. Install the Rust toolchain pinned in
+`rust-toolchain.toml` and configure the input repositories and your disc path
+using the [input conventions](plans/conventions.md#inputs-pins-and-local-configuration).
 
 ```sh
 cargo build --release -p psxw-cli
@@ -23,6 +32,12 @@ cargo build --release -p psxw-cli
 ./target/release/psxw run btn --check boot # needs [game.btn] disc in psxw.local.toml
 ./target/release/psxw build-web btn && ./target/release/psxw serve out/web/btn
 ```
+
+To enable live JavaScript mods, build with `psxw build-web btn --moddable`.
+Serve the bundle, start the game with your disc, and use the page's mod panel
+to load or swap mods while playing. In a mods workspace, `psxw mod watch <mod|set>`
+reloads a script mod when you save it. See the [browser guide](web/README.md)
+for console commands and examples.
 
 | Path | What |
 |---|---|

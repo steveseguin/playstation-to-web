@@ -1,6 +1,6 @@
 # btn's test mods
 
-psx-wasm's own mods for btn, which the CI gate `mods` runs (plans/M11).
+PlayStation to Web's own mods for btn, which the CI gate `mods` runs (plans/M11).
 They contain only our code. The acceptance mod, better-rand, lives in the
 separate `btn-mods` repository that `inputs.lock` pins.
 

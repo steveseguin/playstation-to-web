@@ -1,4 +1,4 @@
-//! Exercise the actual binary outside a psx-wasm or mods workspace.
+//! Exercise the actual binary outside a PlayStation to Web or mods workspace.
 
 use std::process::{Command, Output};
 
@@ -16,8 +16,8 @@ fn help(args: &[&str]) -> String {
     assert!(output.status.success(), "{args:?}: {}", String::from_utf8_lossy(&output.stderr));
     assert!(output.stderr.is_empty(), "{args:?}: unexpected stderr");
     let text = String::from_utf8(output.stdout).unwrap();
-    assert!(text.contains("PSX WASM // MIPS IN. WASM OUT."));
-    assert!(text.contains("/ __ \\/ ___/"), "missing ASCII banner");
+    assert!(text.contains("Play, debug, and remix PlayStation games in your browser."));
+    assert!(text.contains("PlayStation to Web"), "missing project name");
     assert!(!text.contains('\x1b'), "redirected help must not contain ANSI escapes");
     text
 }
@@ -61,7 +61,7 @@ fn every_top_level_command_has_help() {
 fn grouped_help_includes_nested_commands_and_options() {
     let mods = help(&["mod", "--help"]);
     assert!(mods.contains("In a mods workspace (psxmods.json):"));
-    assert!(mods.contains("In the psx-wasm project:"));
+    assert!(mods.contains("In the PlayStation to Web project:"));
     assert!(mods.contains("--script"));
     let oracle = help(&["oracle", "--help"]);
     assert!(oracle.contains("images build"));

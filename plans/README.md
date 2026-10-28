@@ -1,6 +1,6 @@
-# psx-wasm execution plan
+# PlayStation to Web execution plan
 
-This directory is the execution plan for building psx-wasm end to end. It's
+This directory is the execution plan for building PlayStation to Web end to end. It's
 written to be the source for an autonomous `/goal` ("implement the whole
 project"). Every milestone file is self-contained, so an agent with no
 memory of earlier sessions can pick up where the last one stopped.
@@ -18,9 +18,9 @@ memory of earlier sessions can pick up where the last one stopped.
 - **What's left:** [`follow-up-tasks.md`](follow-up-tasks.md) gathers every
   open task, what each needs, and the gaps found along the way.
 
-## What psx-wasm is, in one screen
+## What PlayStation to Web is, in one screen
 
-psx-wasm takes a matching PlayStation decompilation (plus, optionally, a
+PlayStation to Web takes a matching PlayStation decompilation (plus, optionally, a
 decompiled PsyQ SDK) and produces `game.wasm`, which runs natively in a
 browser Web Worker or under wasmtime.
 
@@ -110,7 +110,7 @@ M0 ─► M1 ─► M2 ─┬─► M4 ─► M5
 | Webview shell decision (browser tab only, or Tauri) | M5 (optional task) | Defaulted to browser tab only (D46); the human may reopen it. |
 | Choice of second game | M9 | |
 | A hardware rig (PS1 with serial port, USB-serial, FreePSXBoot or Unirom) | M10 | Or a community member with one. |
-| License for psx-wasm | Before any public release | |
+| License for PlayStation to Web | Before any public release | |
 
 ## Repository map
 

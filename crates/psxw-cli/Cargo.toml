@@ -1,5 +1,6 @@
 [package]
 name = "psxw-cli"
+description = "PlayStation to Web: compile PlayStation games for the browser and modify them live"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true

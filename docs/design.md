@@ -1,4 +1,4 @@
-# psx-wasm: design sketch
+# PlayStation to Web: design sketch
 
 Status: **M0 and M1 implemented (2026-10-26); the M3 device oracle is in
 place apart from its whole-game tasks.** The numbers in this
@@ -20,7 +20,7 @@ manifest, without changes to the toolchain's code.
 
 ## What "native, not an emulator" means here
 
-| PSX part | In psx-wasm |
+| PSX part | In PlayStation to Web |
 |---|---|
 | R3000 CPU | **Gone.** clang compiles the game and SDK C to wasm. Any residual asm is translated ahead of time (the lift tier). Nothing decodes MIPS at run time. |
 | Memory map | **Kept.** RAM, the scratchpad, and every symbol sit at their original addresses inside a wasm memory window, and pointer values are the PSX's own. This is a choice of data layout, not hardware emulation. |
@@ -32,7 +32,7 @@ manifest, without changes to the toolchain's code.
 | Interrupts | Callbacks run at safepoints, on a deterministic virtual clock. |
 
 Every approach needs the renderer and the mixer, because the game's output
-*is* GPU packets and SPU voices. What psx-wasm avoids is modelling the
+*is* GPU packets and SPU voices. What PlayStation to Web avoids is modelling the
 machine that consumed them.
 
 ## What the inputs look like (measured)
@@ -91,7 +91,7 @@ exists:
 
 wasm32 is unusually well suited to this. Its pointers are 32 bits and
 little-endian, and its C struct layout (alignment of `int`, `long`,
-`long long` and `double`, and bitfield order) agrees with MIPS o32. So psx-wasm
+`long long` and `double`, and bitfield order) agrees with MIPS o32. So PlayStation to Web
 keeps the original memory map instead of letting a wasm linker lay memory
 out:
 
@@ -461,7 +461,7 @@ care which of the two is in use.
   replays and profiling. Tests therefore run exactly the wasm that ships.
   The browser is the product, not the debugging environment.
 
-### 8. psx-wasm owns the final link
+### 8. PlayStation to Web owns the final link
 
 Most of the job is *placement*: data at fixed addresses, function addresses
 that are MIPS addresses, overlay stubs, and the guest's half of the seam
@@ -754,18 +754,18 @@ that an automated oracle. The device target is pluggable: headless
 emulators now, a real console when one is available.
 
 ```
- psx-wasm run of the game ──► vector recorder ──► vector archive
+ PlayStation to Web run of the game ──► vector recorder ──► vector archive
                                                     │
                 ┌───────────────────────────────────┤
                 ▼                                   ▼
-   runner.exe on a device target          psx-wasm device under test
+   runner.exe on a device target          PlayStation to Web device under test
    (emulator A, emulator B, or a PS1)     (same vector)
                 │                                   │
                 ▼                                   │
    golden store (result + provenance) ──► compare ◄─┘
 ```
 
-- **The vector recorder** captures, from real psx-wasm runs, what the game
+- **The vector recorder** captures, from real PlayStation to Web runs, what the game
   asks of each device: draw commands with the VRAM state before them, GTE
   inputs, SPU voice setups and sample counts, CD command sequences. Coverage
   is the game's real workload.
@@ -785,7 +785,7 @@ emulators now, a real console when one is available.
     a small headless libretro host. It is built from source at a pinned
     commit inside a Docker image, with OpenBIOS (also built from source) as
     the BIOS, so no BIOS dump is needed. It runs as an external tool and is
-    never linked into psx-wasm, so its license doesn't touch it.
+    never linked into PlayStation to Web, so its license doesn't touch it.
   - *Hardware later:* an original PS1 with a serial port, a USB-serial
     adapter, and FreePSXBoot or Unirom to run the runner. Anyone with such
     a rig can run a batch of vectors, since the harness is data in, data
@@ -825,7 +825,7 @@ verified 1× mode as explicitly unverified options.
 ### Whole-game oracles
 
 - **RAM by symbol against an emulator** (provisional). The original game
-  runs in a headless emulator with the same inputs as psx-wasm. Because the
+  runs in a headless emulator with the same inputs as PlayStation to Web. Because the
   memory layout is the original's, RAM can be compared by symbol at
   matching values of the game's own frame counter: "at frame 4,210,
   `gPlayerX` differs". `psxw oracle play` runs the emulator side and
