@@ -28,6 +28,7 @@ else {
     EJS_backgroundColor: '#121422', EJS_threads: false,
     EJS_disableDatabases: true, EJS_disableAutoLang: true,
     EJS_volume: 0.5, EJS_startButtonName: 'Start game',
+    EJS_defaultOptions: { 'virtual-gamepad': navigator.maxTouchPoints > 0 ? 'enabled' : 'disabled' },
     EJS_VirtualGamepadSettings: [
       { type: 'dpad', location: 'left', left: '50%', right: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
       { type: 'button', text: '×', id: 'cross', location: 'right', left: 40, top: 40, bold: true, input_value: 0 },

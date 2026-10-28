@@ -29,6 +29,7 @@ try {
   assert.equal(await page.locator('#mods-dialog').evaluate(el => el.open), false);
 
   for (const [id, title, move] of [['paddle-rally', 'Paddle Rally', 'ArrowDown'], ['brick-shift', 'Brick Shift', 'ArrowRight']]) {
+    console.log(`Checking ${title}: boot, movement, launch, and pause.`);
     await page.getByRole('button', { name: `${title}, ready to play`, exact: true }).click();
     assert.equal(await page.locator('iframe').count(), 0, 'switching games destroys previous player');
     assert.equal(await page.locator('#game-title').textContent(), title);
@@ -83,11 +84,13 @@ try {
   await mobile.screenshot({ path: 'test-results/arcade-mobile-mods.png', fullPage: true });
   await mobile.locator('#close-mods').click();
   await mobile.screenshot({ path: 'test-results/arcade-mobile.png', fullPage: true });
-  await mobile.locator('#play').click();
+  console.log('Checking mobile touch controls.');
+  await mobile.locator('#play').tap();
   await mobile.waitForFunction(() => document.getElementById('session-label').textContent === 'NOW PLAYING', null, { timeout: 90000 });
   const mobileFrame = mobile.frames().find(frame => frame.url().includes('player.html'));
   assert.equal(await mobileFrame.locator('.ejs_menu_bar').evaluate(el => el.classList.contains('ejs_menu_bar_hidden')), true, 'startup menu must not cover touch controls');
   const cross = mobileFrame.locator('.ejs_virtualGamepad_button.b_cross');
+  await mobile.waitForTimeout(300);
   await cross.waitFor({ state: 'visible' });
   await cross.scrollIntoViewIfNeeded();
   const touch = await cross.boundingBox();
