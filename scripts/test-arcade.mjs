@@ -77,6 +77,8 @@ try {
   await popup.close();
 
   const mobile = await browser.newPage({ ...devices['Pixel 7'], viewport: { width: 390, height: 844 } });
+  // Regression: Linux Chromium's Android emulation can report no touch points.
+  await mobile.addInitScript(() => Object.defineProperty(Navigator.prototype, 'maxTouchPoints', { get: () => 0, configurable: true }));
   await mobile.goto(base + '?game=brick-shift');
   assert.equal(await mobile.locator('#game-title').textContent(), 'Brick Shift');
   assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no horizontal overflow on mobile');

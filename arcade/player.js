@@ -1,6 +1,7 @@
 import { games, EMULATOR_DATA } from './games.js';
+import { wantsTouchControls } from './input.js';
 const id = new URLSearchParams(location.search).get('game');
-const touchControls = new URLSearchParams(location.search).get('touch') === '1' || navigator.maxTouchPoints > 0;
+const touchControls = new URLSearchParams(location.search).get('touch') === '1' || wantsTouchControls();
 const game = games.find(item => item.id === id && item.available && item.engine === 'emulator');
 const send = type => parent.postMessage({ type }, location.origin);
 // The core requests an optional screen wake lock without catching rejection.

@@ -1,5 +1,6 @@
 import { games, findGame } from './games.js';
 import { artwork } from './art.js';
+import { wantsTouchControls } from './input.js';
 
 const $ = id => document.getElementById(id);
 let selected = findGame(new URLSearchParams(location.search).get('game'));
@@ -79,9 +80,8 @@ function play() {
   frame.title = `${selected.title} game player`;
   frame.allow = 'autoplay; fullscreen; gamepad; screen-wake-lock';
   frame.allowFullscreen = true;
-  // Carry touch capability from the top-level page into the isolated player.
-  // Some browsers report zero touch points inside a newly created frame.
-  frame.src = `player.html?game=${encodeURIComponent(selected.id)}&touch=${navigator.maxTouchPoints > 0 ? 1 : 0}`;
+  // Keep the top-level page and player consistent about touch controls.
+  frame.src = `player.html?game=${encodeURIComponent(selected.id)}&touch=${wantsTouchControls() ? 1 : 0}`;
   $('preview').hidden = true;
   $('game-mount').hidden = false;
   $('game-mount').append(frame);
