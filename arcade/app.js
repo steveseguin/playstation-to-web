@@ -79,7 +79,9 @@ function play() {
   frame.title = `${selected.title} game player`;
   frame.allow = 'autoplay; fullscreen; gamepad; screen-wake-lock';
   frame.allowFullscreen = true;
-  frame.src = `player.html?game=${encodeURIComponent(selected.id)}`;
+  // Carry touch capability from the top-level page into the isolated player.
+  // Some browsers report zero touch points inside a newly created frame.
+  frame.src = `player.html?game=${encodeURIComponent(selected.id)}&touch=${navigator.maxTouchPoints > 0 ? 1 : 0}`;
   $('preview').hidden = true;
   $('game-mount').hidden = false;
   $('game-mount').append(frame);

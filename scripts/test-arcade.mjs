@@ -91,7 +91,17 @@ try {
   assert.equal(await mobileFrame.locator('.ejs_menu_bar').evaluate(el => el.classList.contains('ejs_menu_bar_hidden')), true, 'startup menu must not cover touch controls');
   const cross = mobileFrame.locator('.ejs_virtualGamepad_button.b_cross');
   await mobile.waitForTimeout(300);
-  await cross.waitFor({ state: 'visible' });
+  try {
+    await cross.waitFor({ state: 'visible', timeout: 10000 });
+  } catch (error) {
+    console.log('Mobile diagnostics:', await mobileFrame.evaluate(() => ({
+      url: location.href, touch: navigator.maxTouchPoints, ua: navigator.userAgent,
+      options: window.EJS_defaultOptions, mobile: window.EJS_emulator?.isMobile,
+      pad: document.querySelector('.ejs_virtualGamepad_parent')?.outerHTML.slice(0, 900),
+      bounds: document.querySelector('.b_cross')?.getBoundingClientRect().toJSON(),
+    })));
+    throw error;
+  }
   await cross.scrollIntoViewIfNeeded();
   const touch = await cross.boundingBox();
   const session = await mobile.context().newCDPSession(mobile);
