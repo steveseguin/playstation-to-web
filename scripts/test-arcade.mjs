@@ -1,10 +1,18 @@
 import { chromium, devices } from 'playwright';
 import { spawn } from 'node:child_process';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
 const base = process.env.ARCADE_URL || 'http://127.0.0.1:4174';
 const assetBase = base.endsWith('/') ? base : base + '/';
+async function waitForGuest(predicate, message) {
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    if (await predicate()) return;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  assert.fail(message);
+}
 const server = process.env.ARCADE_URL ? null : spawn(process.execPath, ['scripts/serve-arcade.mjs'], { env: { ...process.env, PORT: '4174' }, stdio: 'pipe' });
 let browser;
 try {
@@ -97,34 +105,41 @@ try {
       await page.locator(`#mod-${mod}`).selectOption(option);
       await page.locator('#apply-mods').click();
       await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Applied live'));
-      await page.waitForTimeout(200);
-      assert.ok(!original.equals(await guestImage()), `${title}: ${mod} changes the actual PS1 framebuffer`);
+      const symbol = mod === 'color' ? 'accent_green' : id === 'brick-shift' ? 'paddle_width' : 'paddle_height';
+      const expected = mod === 'color' ? 240 : id === 'brick-shift' ? 80 : 72;
+      await waitForGuest(async () => (await guestState()).readUInt32LE(ramOffset + symbols[symbol] - firstAddress) === expected,
+        `${title}: ${mod} reaches PS1 RAM`);
+      // The emulator applies cheats and presents frames asynchronously. Wait
+      // for the guest result, rather than assuming CI renders within 200 ms.
+      try {
+        await waitForGuest(async () => !original.equals(await guestImage()), `${title}: ${mod} changes the actual PS1 framebuffer`);
+      } catch (error) {
+        await writeFile(`test-results/${id}-${mod}-before.png`, original);
+        await writeFile(`test-results/${id}-${mod}-after.png`, await guestImage());
+        throw error;
+      }
       assert.equal(page.frames().find(f => f.url().includes('player.html')), frame, 'mods keep the same game session');
       await page.screenshot({ path: `test-results/${id}-mod-${mod}.png`, fullPage: true });
       await page.locator('#reset-mods').click();
       await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Original settings restored'));
-      await page.waitForTimeout(200);
-      assert.ok(original.equals(await guestImage()), `${title}: restoring ${mod} returns the exact paused framebuffer`);
+      await waitForGuest(async () => original.equals(await guestImage()), `${title}: restoring ${mod} returns the exact paused framebuffer`);
       await page.locator('#close-mods').click();
     }
     await page.locator('#open-mods').click();
     await page.locator('#mod-speed').selectOption('fast');
     await page.locator('#apply-mods').click();
     await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Applied live'));
-    await page.waitForTimeout(200);
-    assert.equal((await guestState()).readUInt32LE(speedOffset), 200, `${title}: fast speed reaches PS1 RAM`);
+    await waitForGuest(async () => (await guestState()).readUInt32LE(speedOffset) === 200, `${title}: fast speed reaches PS1 RAM`);
     await page.locator('#close-mods').click();
     await page.locator('#open-mods').click();
     assert.equal(await page.locator('#mod-speed').inputValue(), 'fast', 'applied choices survive reopening');
     await page.locator('#mod-speed').selectOption('slow');
     await page.locator('#apply-mods').click();
     await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Applied live'));
-    await page.waitForTimeout(200);
-    assert.equal((await guestState()).readUInt32LE(speedOffset), 50, `${title}: slow speed reaches PS1 RAM`);
+    await waitForGuest(async () => (await guestState()).readUInt32LE(speedOffset) === 50, `${title}: slow speed reaches PS1 RAM`);
     await page.locator('#reset-mods').click();
     await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Original settings restored'));
-    await page.waitForTimeout(200);
-    assert.equal((await guestState()).readUInt32LE(speedOffset), 100, `${title}: default speed restored in PS1 RAM`);
+    await waitForGuest(async () => (await guestState()).readUInt32LE(speedOffset) === 100, `${title}: default speed restored in PS1 RAM`);
     await page.locator('#close-mods').click();
   }
   await page.locator('#stop').click();
