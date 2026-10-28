@@ -104,18 +104,22 @@ try {
     })));
     throw error;
   }
-  await cross.scrollIntoViewIfNeeded();
+  // Engine start precedes the PS1 program's GPU/pad initialization. Give the
+  // guest the same boot settling time as the desktop input check.
+  await mobile.waitForTimeout(1000);
+  await cross.tap({ trial: true });
   const touch = await cross.boundingBox();
   const session = await mobile.context().newCDPSession(mobile);
   await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: touch.x + touch.width / 2, y: touch.y + touch.height / 2 }] });
-  await mobile.waitForTimeout(120);
+  await mobile.waitForTimeout(200);
+  assert.equal(await cross.evaluate(el => el.classList.contains('ejs_virtualGamepad_button_down')), true, 'native touch reaches the launch button');
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await mobile.waitForTimeout(500);
   const mobileCanvas = mobileFrame.locator('canvas').first();
   const touchLaunched = await mobileCanvas.screenshot();
   await mobile.waitForTimeout(400);
-  assert.ok(!touchLaunched.equals(await mobileCanvas.screenshot()), 'touch launch animates the game');
   await mobile.screenshot({ path: 'test-results/arcade-mobile-playing.png', fullPage: true });
+  assert.ok(!touchLaunched.equals(await mobileCanvas.screenshot()), 'touch launch animates the game');
   const offline = await browser.newPage();
   await offline.route('https://cdn.emulatorjs.org/**', route => route.abort());
   await offline.goto(base);
