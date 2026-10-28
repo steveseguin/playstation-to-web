@@ -4,6 +4,7 @@ import { mkdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
 const base = process.env.ARCADE_URL || 'http://127.0.0.1:4174';
+const assetBase = base.endsWith('/') ? base : base + '/';
 const server = process.env.ARCADE_URL ? null : spawn(process.execPath, ['scripts/serve-arcade.mjs'], { env: { ...process.env, PORT: '4174' }, stdio: 'pipe' });
 let browser;
 try {
@@ -24,7 +25,8 @@ try {
   await page.locator('[data-filter="all"]').click();
   await page.locator('#open-mods').click();
   assert.equal(await page.locator('#mods-dialog').evaluate(el => el.open), true);
-  assert.match(await page.locator('#mods-dialog').innerText(), /No mods available yet/);
+  assert.match(await page.locator('#mods-dialog').innerText(), /Paddle color/);
+  assert.equal(await page.locator('#apply-mods').isDisabled(), true, 'mods require a running game');
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('#mods-dialog').evaluate(el => el.open), false);
 
@@ -62,8 +64,67 @@ try {
     await page.waitForTimeout(400);
     assert.ok(paused.equals(await page.screenshot({ clip })), `${title}: pause freezes the game`);
     await page.screenshot({ path: `test-results/${id}-playing.png`, fullPage: true });
+    console.log(`Checking ${title}: live color, size, speed and restoring defaults.`);
+    // Capture the guest framebuffer directly: dialogs and emulator toolbars
+    // must not count as evidence that an in-game mod changed the picture.
+    const guestImage = async () => Buffer.from(await frame.evaluate(async () =>
+      Array.from(await window.EJS_emulator.gameManager.screenshot())));
+    const original = await guestImage();
+    // Locate the compiled globals in the core's saved RAM, independently of
+    // the UI acknowledgement. This also verifies the speed code really writes
+    // the game's variable (speed does not change a paused screenshot).
+    const manifest = await (await fetch(new URL('mod-manifest.json', assetBase))).json();
+    const symbols = manifest[id].symbols;
+    const exe = Buffer.from(await (await fetch(new URL(`games/${id}.exe`, assetBase))).arrayBuffer());
+    const firstAddress = Math.min(...Object.values(symbols));
+    const lastAddress = Math.max(...Object.values(symbols));
+    const fileOffset = firstAddress - exe.readUInt32LE(0x18) + 2048;
+    const signature = exe.subarray(fileOffset, fileOffset + lastAddress - firstAddress + 4);
+    const guestState = async () => Buffer.from(await frame.evaluate(() => {
+      const bytes = window.EJS_emulator.gameManager.getState();
+      const chunks = [];
+      for (let i = 0; i < bytes.length; i += 8192) chunks.push(String.fromCharCode(...bytes.subarray(i, i + 8192)));
+      return btoa(chunks.join(''));
+    }), 'base64');
+    const initialState = await guestState();
+    const ramOffset = initialState.indexOf(signature);
+    assert.ok(ramOffset >= 0, `${title}: locate mod globals in saved PS1 RAM`);
+    assert.equal(initialState.lastIndexOf(signature), ramOffset, 'RAM signature must be unique');
+    const speedOffset = ramOffset + symbols.ball_speed - firstAddress;
+    for (const [mod, option] of [['color', 'mint'], ['size', 'large']]) {
+      await page.locator('#open-mods').click();
+      assert.match(await page.locator('#mods-game').textContent(), new RegExp(title));
+      await page.locator(`#mod-${mod}`).selectOption(option);
+      await page.locator('#apply-mods').click();
+      await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Applied live'));
+      await page.waitForTimeout(200);
+      assert.ok(!original.equals(await guestImage()), `${title}: ${mod} changes the actual PS1 framebuffer`);
+      assert.equal(page.frames().find(f => f.url().includes('player.html')), frame, 'mods keep the same game session');
+      await page.screenshot({ path: `test-results/${id}-mod-${mod}.png`, fullPage: true });
+      await page.locator('#reset-mods').click();
+      await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Original settings restored'));
+      await page.waitForTimeout(200);
+      assert.ok(original.equals(await guestImage()), `${title}: restoring ${mod} returns the exact paused framebuffer`);
+      await page.locator('#close-mods').click();
+    }
     await page.locator('#open-mods').click();
-    assert.match(await page.locator('#mods-game').textContent(), new RegExp(title));
+    await page.locator('#mod-speed').selectOption('fast');
+    await page.locator('#apply-mods').click();
+    await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Applied live'));
+    await page.waitForTimeout(200);
+    assert.equal((await guestState()).readUInt32LE(speedOffset), 200, `${title}: fast speed reaches PS1 RAM`);
+    await page.locator('#close-mods').click();
+    await page.locator('#open-mods').click();
+    assert.equal(await page.locator('#mod-speed').inputValue(), 'fast', 'applied choices survive reopening');
+    await page.locator('#mod-speed').selectOption('slow');
+    await page.locator('#apply-mods').click();
+    await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Applied live'));
+    await page.waitForTimeout(200);
+    assert.equal((await guestState()).readUInt32LE(speedOffset), 50, `${title}: slow speed reaches PS1 RAM`);
+    await page.locator('#reset-mods').click();
+    await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Original settings restored'));
+    await page.waitForTimeout(200);
+    assert.equal((await guestState()).readUInt32LE(speedOffset), 100, `${title}: default speed restored in PS1 RAM`);
     await page.locator('#close-mods').click();
   }
   await page.locator('#stop').click();
@@ -71,6 +132,10 @@ try {
   await page.getByRole('button', { name: 'Harvest Moon, your own build required' }).click();
   assert.match(await page.locator('#play').innerText(), /Build & play/);
   assert.match(await page.locator('#play-note').textContent(), /own compiled build/);
+  await page.locator('#open-mods').click();
+  assert.equal(await page.locator('#mod-editor').isVisible(), false);
+  assert.equal(await page.locator('#empty-mods').isVisible(), true);
+  await page.locator('#close-mods').click();
   const popupPromise = page.waitForEvent('popup');
   await page.locator('#play').click();
   const popup = await popupPromise;
@@ -120,6 +185,13 @@ try {
   await mobile.waitForTimeout(400);
   await mobile.screenshot({ path: 'test-results/arcade-mobile-playing.png', fullPage: true });
   assert.ok(!touchLaunched.equals(await mobileCanvas.screenshot()), 'touch launch animates the game');
+  await mobile.locator('#open-mods').tap();
+  await mobile.locator('#mod-color').selectOption('pink');
+  await mobile.locator('#apply-mods').tap();
+  await mobile.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Applied live'));
+  await mobile.screenshot({ path: 'test-results/arcade-mobile-applied.png', fullPage: true });
+  await mobile.locator('#close-mods').tap();
+  assert.equal(mobile.frames().find(f => f.url().includes('player.html')), mobileFrame, 'mobile mod keeps playing in the same session');
   const offline = await browser.newPage();
   await offline.route('https://cdn.emulatorjs.org/**', route => route.abort());
   await offline.goto(base);
@@ -129,7 +201,7 @@ try {
   await offline.locator('#stop').click();
   assert.equal(await offline.locator('iframe').count(), 0);
   assert.deepEqual(errors, [], 'no uncaught browser errors');
-  console.log('Passed: both real PS1 games boot, accept input and animate; game switching, filters, mod dialogs, build-only route and mobile layout.');
+  console.log('Passed: both PS1 games boot and play; live color/size change the guest framebuffer; speed values reach PS1 RAM; defaults restore; desktop and touch mod controls work.');
 } finally {
   await browser?.close();
   server?.kill();

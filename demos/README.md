@@ -41,18 +41,35 @@ The existing compiler and single-game host in `web/` continue to work separately
 
 ## Mods
 
-Each catalog entry in `arcade/games.js` has its own empty `mods` list. The
-**Apply mod** drawer explains that no mods are available; it does not apply
-visual filters or inject scripts. Future mods must declare their game and
-supported player. The games expose named globals for paddle size/speed and
-accent color as starting points for future patches.
+Both demos support live paddle color, paddle size, and ball speed changes.
+Start a game, open **Apply mod**, choose settings, and press **Apply changes**.
+**Restore defaults** restores the original values without restarting. Restarting
+or switching games clears the session's mods. Enter / Start pauses gameplay;
+the mod panel itself does not pause it. In-game New game keeps your mods.
+
+These are real PS1 RAM edits using the pinned EmulatorJS 4.2.3
+[`GameManager.setCheat`](https://github.com/EmulatorJS/EmulatorJS/blob/v4.2.3/data/src/GameManager.js)
+API and PCSX-ReARMed GameShark codes. `arcade/mods.js` defines reviewed options.
+The build reads the matching ELF symbols, validates each default against the
+executable, and generates `mod-manifest.json`. Executable URLs include a build
+hash so a cached older binary cannot receive a newer build's addresses.
+The player accepts only catalog options from its same-origin parent frame.
+Restoring defaults writes the original values back, because disabling a cheat
+alone would leave changed RAM behind. Ball speed changes physics steps only;
+paddle input stays responsive and collision checks still run at each step.
+
+This bridge is specific to these homebrew games. Arbitrary text editing and
+JavaScript hooks are not exposed in the hosted demos. Compiled psxw games use
+the separate [JavaScript mod system](../web/README.md#script-mods).
 
 ## Validation
 
 `npm test` checks the packaged PS1 headers, catalog, assets, and licenses.
 `npx playwright install chromium` followed by `npm run test:browser` verifies
-that both games boot, respond to keyboard input, and animate, as well as
-switching games, dialogs, controls, and the mobile layout. Browser tests need
+that both games boot, respond to keyboard input, and animate. It compares the
+actual PS1 framebuffer before/after color and size mods, checks speed values
+in saved PS1 RAM, verifies restoration, and exercises desktop and touch mod
+controls, game switching, and mobile layout. Browser tests need
 network access to the versioned EmulatorJS CDN. `ARCADE_URL` can point the same
 browser checks at a deployed site.
 

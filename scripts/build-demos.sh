@@ -16,3 +16,6 @@ cmake -S demos -B out/arcade-demos \
   -DCMAKE_TOOLCHAIN_FILE="$sdk_root/lib/libpsn00b/cmake/sdk.cmake" \
   -DPSN00BSDK_TC="$sdk_root/bin" -DCMAKE_BUILD_TYPE=Release
 cmake --build out/arcade-demos --parallel 2
+for game in paddle-rally brick-shift; do
+  "$sdk_root/bin/mipsel-none-elf-nm" --defined-only "out/arcade-demos/$game.elf" > "out/arcade-demos/$game.sym"
+done

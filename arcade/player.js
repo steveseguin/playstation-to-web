@@ -1,9 +1,29 @@
 import { games, EMULATOR_DATA } from './games.js';
 import { wantsTouchControls } from './input.js';
+import { cheatCodes } from './mods.js';
 const id = new URLSearchParams(location.search).get('game');
 const touchControls = new URLSearchParams(location.search).get('touch') === '1' || wantsTouchControls();
 const game = games.find(item => item.id === id && item.available && item.engine === 'emulator');
-const send = type => parent.postMessage({ type }, location.origin);
+let ready = false;
+const manifest = game ? await fetch('mod-manifest.json').then(response => {
+  if (!response.ok) throw new Error('Mod map unavailable');
+  return response.json();
+}).then(data => data[game.id]).catch(() => null) : null;
+const send = (type, extra = {}) => parent.postMessage({ type, modsReady: ready && !!manifest, ...extra }, location.origin);
+addEventListener('message', event => {
+  if (event.origin !== location.origin || event.source !== parent || event.data?.type !== 'arcade-apply-mods') return;
+  const { request, selection } = event.data;
+  try {
+    if (!ready || !manifest) throw new Error('Mods are unavailable. Restart the game and try again.');
+    const codes = cheatCodes(game, selection, manifest.symbols);
+    // Pinned EmulatorJS 4.2.3 GameManager API. Use the same slots on every
+    // apply, including defaults: removing a cheat alone leaves RAM modified.
+    codes.forEach((code, index) => window.EJS_emulator.gameManager.setCheat(index, true, code));
+    send('arcade-mods-applied', { request, selection });
+  } catch (error) {
+    send('arcade-mods-error', { request, message: error.message });
+  }
+});
 // The core requests an optional screen wake lock without catching rejection.
 // Background tabs and some browsers deny it; gameplay does not depend on it.
 addEventListener('unhandledrejection', event => {
@@ -23,7 +43,7 @@ if (!game) failed();
 else {
   Object.assign(window, {
     EJS_player: '#game', EJS_core: 'pcsx_rearmed',
-    EJS_gameUrl: new URL(game.rom, location.href).href,
+    EJS_gameUrl: new URL(game.rom + (manifest ? `?v=${manifest.sha256}` : ''), location.href).href,
     EJS_gameName: game.id, EJS_gameID: games.indexOf(game) + 1,
     EJS_pathtodata: EMULATOR_DATA,
     EJS_startOnLoaded: true, EJS_color: game.color,
@@ -50,6 +70,7 @@ else {
       9: { value: 'a', value2: 'BUTTON_3' },
     }, 1: {}, 2: {}, 3: {} },
     EJS_onGameStart: () => {
+      ready = true;
       // Pinned 4.2.3 opens its menu on startup, covering the touch controls.
       // Keep it available via the menu button, but start with the game visible.
       window.EJS_emulator.menu.close();

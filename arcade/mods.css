@@ -1,0 +1,11 @@
+#mod-fields { display: grid; gap: 16px; margin: 22px 0; }
+#mod-fields label { display: grid; gap: 8px; font-size: 14px; font-weight: 600; }
+#mod-fields select { width: 100%; padding: 12px; background: #22202b; color: #fff4e7; border: 1px solid #625464; border-radius: 8px; font: inherit; }
+.mod-intro, #mod-status { font-size: 14px; line-height: 1.6; }
+.mod-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.mod-actions button { padding: 12px 15px; border: 1px solid #796777; border-radius: 8px; background: transparent; color: #fff4e7; font: inherit; cursor: pointer; }
+#apply-mods { background: #ff865b; border-color: #ff865b; color: #211823; font-weight: 700; }
+.mod-actions button:disabled { opacity: .45; cursor: not-allowed; }
+#mod-status { min-height: 3.2em; color: #c8dfb1; }
+#mods-dialog { max-height: 90dvh; overflow-y: auto; }
+#mods-dialog [hidden] { display: none; }

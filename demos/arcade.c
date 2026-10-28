@@ -16,10 +16,12 @@ static uint8_t *next;
 static int frame;
 static uint8_t pad1[34], pad2[34];
 
-/* These named globals are intentionally easy to identify for future mods. */
+/* Live mods patch these globals through the emulator cheat API. */
 volatile int paddle_width = 48;
 volatile int paddle_height = 40;
 volatile int paddle_speed = 4;
+volatile int ball_speed = 100;
+static int ball_clock;
 volatile int accent_red = 255, accent_green = 125, accent_blue = 74;
 static int bx, by, vx, vy, paddle, rival, score, other, lives, waiting, over;
 static int bricks[5][8], remaining;
@@ -35,7 +37,7 @@ static void text(int x, int y, const char *s) {
     next = (uint8_t *)FntSort(&order[frame][0], next, x, y, s);
 }
 static void serve(void) {
-    waiting = 1;
+    waiting = 1; ball_clock = 0;
     bx = GAME_BRICKS ? paddle + paddle_width / 2 : 160;
     by = GAME_BRICKS ? 202 : 125;
     vx = GAME_BRICKS ? 2 : (other & 1 ? -2 : 2);
@@ -48,13 +50,8 @@ static void reset(void) {
     for (int y = 0; y < 5; y++) for (int x = 0; x < 8; x++) bricks[y][x] = 1;
     serve();
 }
-static void update(uint16_t held, uint16_t pressed) {
-    if (over) { if (pressed & PAD_CROSS) reset(); return; }
+static void ball_step(void) {
     if (GAME_BRICKS) {
-        if (held & PAD_LEFT) paddle -= paddle_speed;
-        if (held & PAD_RIGHT) paddle += paddle_speed;
-        paddle = clamp(paddle, 12, 308 - paddle_width);
-        if (waiting) { bx = paddle + paddle_width / 2; if (pressed & PAD_CROSS) waiting = 0; return; }
         int oldy = by;
         bx += vx; by += vy;
         if (bx < 12) { bx = 12; vx = -vx; }
@@ -75,12 +72,6 @@ static void update(uint16_t held, uint16_t pressed) {
         }
         if (by > 230) { if (--lives <= 0) over = 1; else serve(); }
     } else {
-        if (held & PAD_UP) paddle -= paddle_speed;
-        if (held & PAD_DOWN) paddle += paddle_speed;
-        paddle = clamp(paddle, 36, 220 - paddle_height);
-        if (waiting) { if (pressed & PAD_CROSS) waiting = 0; return; }
-        rival += by > rival + 20 ? 1 : by < rival + 17 ? -1 : 0;
-        rival = clamp(rival, 36, 180);
         bx += vx; by += vy;
         if (by < 36) { by = 36; vy = -vy; }
         if (by > 214) { by = 214; vy = -vy; }
@@ -94,6 +85,33 @@ static void update(uint16_t held, uint16_t pressed) {
             if (bx < 0) other++; else score++;
             if (score >= 7 || other >= 7) over = 1; else serve();
         }
+    }
+}
+static void update(uint16_t held, uint16_t pressed) {
+    if (over) { if (pressed & PAD_CROSS) reset(); return; }
+    if (GAME_BRICKS) {
+        if (held & PAD_LEFT) paddle -= paddle_speed;
+        if (held & PAD_RIGHT) paddle += paddle_speed;
+        paddle = clamp(paddle, 12, 308 - paddle_width);
+    } else {
+        if (held & PAD_UP) paddle -= paddle_speed;
+        if (held & PAD_DOWN) paddle += paddle_speed;
+        paddle = clamp(paddle, 36, 220 - paddle_height);
+    }
+    if (waiting) {
+        if (GAME_BRICKS) bx = paddle + paddle_width / 2;
+        if (pressed & PAD_CROSS) waiting = 0;
+        return;
+    }
+    if (!GAME_BRICKS) {
+        rival += by > rival + 20 ? 1 : by < rival + 17 ? -1 : 0;
+        rival = clamp(rival, 36, 180);
+    }
+    // Keep input responsive and collision steps small at every ball speed.
+    ball_clock += clamp(ball_speed, 50, 200);
+    while (ball_clock >= 100 && !waiting && !over) {
+        ball_clock -= 100;
+        ball_step();
     }
 }
 static void render(int paused) {

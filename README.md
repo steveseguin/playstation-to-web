@@ -6,8 +6,11 @@
 
 Try **Paddle Rally** and **Brick Shift**, two free, original PS1 homebrew games.
 Choose a game, press **Play now**, and find its controls below the screen.
-No disc or BIOS upload is needed. Each game has an **Apply mod** drawer;
-the hosted demos do not have mods yet.
+No disc or BIOS upload is needed. While playing, open **Apply mod** to change
+your paddle's color and size or slow down/speed up the ball. Press **Apply
+changes** to see the result live, without restarting or losing progress.
+**Restore defaults** puts the original settings back. These changes last for
+the current session; restarting or switching games clears them.
 
 The arcade currently plays these homebrew games through EmulatorJS. They are
 not yet compiled with `psxw`. The compiler and its live JavaScript mod tools

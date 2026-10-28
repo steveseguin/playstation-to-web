@@ -1,12 +1,16 @@
 import { games, findGame } from './games.js';
 import { artwork } from './art.js';
 import { wantsTouchControls } from './input.js';
+import { modDefinitions, defaultMods } from './mods.js';
 
 const $ = id => document.getElementById(id);
 let selected = findGame(new URLSearchParams(location.search).get('game'));
 let active = null;
 let filter = 'all';
 let loadTimer;
+let modTimer;
+let pendingMods = null;
+let requestNumber = 0;
 const status = (message, error = false) => { $('status').textContent = message; $('status').classList.toggle('error', error); };
 
 function renderLibrary() {
@@ -25,6 +29,8 @@ function renderLibrary() {
 
 function stop(message = 'Game stopped. Ready for another round?') {
   clearTimeout(loadTimer);
+  clearTimeout(modTimer);
+  pendingMods = null;
   // Removing the frame tears down the entire engine, including audio and input.
   $('game-mount').replaceChildren();
   $('game-mount').hidden = true;
@@ -85,7 +91,7 @@ function play() {
   $('preview').hidden = true;
   $('game-mount').hidden = false;
   $('game-mount').append(frame);
-  active = { game: selected, frame };
+  active = { game: selected, frame, ready: false, mods: defaultMods() };
   $('restart').disabled = $('stop').disabled = false;
   $('session-label').textContent = 'LOADING THE GOOD STUFF';
   status('Loading the player and game. The first visit may take a moment…');
@@ -95,11 +101,24 @@ function play() {
 addEventListener('message', event => {
   if (!active || event.origin !== location.origin || event.source !== active.frame.contentWindow) return;
   if (event.data?.type === 'arcade-started') {
+    active.ready = event.data.modsReady === true;
+    updateModButtons();
+    if ($('mods-dialog').open) $('mod-status').textContent = active.ready ? 'Changes take effect when you press Apply changes.' : 'Mod settings could not load. Restart the game and try again.';
     clearTimeout(loadTimer);
     $('session-label').textContent = 'NOW PLAYING';
     status('Game loaded. Press X or tap × to launch. Enter / Start pauses.');
     active.frame.focus();
+  } else if (event.data?.type === 'arcade-mods-applied' || event.data?.type === 'arcade-mods-error') {
+    if (!pendingMods || event.data.request !== pendingMods.request) return;
+    clearTimeout(modTimer);
+    if (event.data.type === 'arcade-mods-applied') {
+      active.mods = pendingMods.selection;
+      $('mod-status').textContent = pendingMods.restore ? 'Original settings restored. Your game continues.' : 'Applied live. Close this panel and keep playing!';
+    } else $('mod-status').textContent = event.data.message || 'Could not apply mods. Try again.';
+    pendingMods = null;
+    updateModButtons();
   } else if (event.data?.type === 'arcade-error') {
+    active.ready = false;
     clearTimeout(loadTimer);
     $('session-label').textContent = 'COULD NOT LOAD';
     status('The player could not load. Check your connection and press Restart to try again.', true);
@@ -117,9 +136,44 @@ $('fullscreen').addEventListener('click', async () => {
   } catch { status('Your browser could not enter fullscreen. You can keep playing here.', true); }
 });
 function openMods() {
-  $('mods-game').textContent = selected.title + ' · 0 mods available';
+  $('mods-game').textContent = `${selected.title} · ${selected.mods.length} live mods`;
+  $('mod-fields').replaceChildren();
+  $('mod-editor').hidden = !selected.mods.length;
+  $('empty-mods').hidden = !!selected.mods.length;
+  const selection = active?.mods || defaultMods();
+  for (const mod of modDefinitions.filter(mod => selected.mods.includes(mod.id))) {
+    const label = document.createElement('label');
+    label.textContent = mod.label;
+    const input = document.createElement('select');
+    input.id = `mod-${mod.id}`;
+    for (const option of mod.options) input.add(new Option(option.label, option.id));
+    input.value = selection[mod.id];
+    label.append(input);
+    $('mod-fields').append(label);
+  }
+  $('mod-status').textContent = pendingMods ? 'Applying…' : active?.ready ? 'Changes take effect when you press Apply changes.' : active ? 'Mods are not ready. Wait for the game to load, or restart it if loading has finished.' : 'Start the game first, then return here to apply mods.';
+  updateModButtons();
   $('mods-dialog').showModal();
 }
+function updateModButtons() {
+  $('apply-mods').disabled = $('reset-mods').disabled = !active?.ready || !!pendingMods;
+}
+function applyMods(restore = false) {
+  if (!active?.ready || pendingMods) return;
+  const selection = restore ? defaultMods() : Object.fromEntries(selected.mods.map(id => [id, $(`mod-${id}`).value]));
+  if (restore) for (const [id, value] of Object.entries(selection)) $(`mod-${id}`).value = value;
+  pendingMods = { request: ++requestNumber, selection, restore };
+  $('mod-status').textContent = 'Applying…';
+  updateModButtons();
+  active.frame.contentWindow.postMessage({ type: 'arcade-apply-mods', ...pendingMods }, location.origin);
+  modTimer = setTimeout(() => {
+    pendingMods = null;
+    $('mod-status').textContent = 'No response from the game. Restart it and try again.';
+    updateModButtons();
+  }, 5000);
+}
+$('apply-mods').addEventListener('click', () => applyMods());
+$('reset-mods').addEventListener('click', () => applyMods(true));
 $('open-mods').addEventListener('click', openMods);
 $('explore-mods').addEventListener('click', openMods);
 $('close-mods').addEventListener('click', () => $('mods-dialog').close());

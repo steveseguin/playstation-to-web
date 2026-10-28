@@ -6,7 +6,7 @@ export const games = [
     description: 'You, a paddle, and a worthy opponent. Keep the ball alive and be the first to seven. Simple to learn. Surprisingly hard to leave.',
     engine: 'emulator', rom: 'games/paddle-rally.exe', available: true,
     controls: [{ keys: ['↑', '↓'], label: 'Move paddle' }, { keys: ['X'], label: 'Launch / play again' }, { keys: ['Enter'], label: 'Pause' }, { keys: ['V'], label: 'New game' }],
-    mods: [],
+    mods: ['color', 'size', 'speed'],
   },
   {
     id: 'brick-shift', title: 'Brick Shift', subtitle: 'Clear the wall. Find your rhythm.',
@@ -14,7 +14,7 @@ export const games = [
     description: 'Forty bricks. Three chances. Angle your shots, chase the last block, and turn a wall of color into a clean slate.',
     engine: 'emulator', rom: 'games/brick-shift.exe', available: true,
     controls: [{ keys: ['←', '→'], label: 'Move paddle' }, { keys: ['X'], label: 'Launch / play again' }, { keys: ['Enter'], label: 'Pause' }, { keys: ['V'], label: 'New game' }],
-    mods: [],
+    mods: ['color', 'size', 'speed'],
   },
   {
     id: 'btn', title: 'Harvest Moon', subtitle: 'Back to Nature',
