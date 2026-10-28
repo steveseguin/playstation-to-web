@@ -2,12 +2,23 @@
 
 **Play, debug, and remix original PlayStation games in your browser. Vibe the game as you play.**
 
+**[Open the arcade — play in your browser](https://steveseguin.github.io/playstation-to-web/)**
+
+Try **Paddle Rally** and **Brick Shift**, two free, original PS1 homebrew games.
+Choose a game, press **Play now**, and find its controls below the screen.
+No disc or BIOS upload is needed. Each game has an **Apply mod** drawer;
+the hosted demos do not have mods yet.
+
+The arcade currently plays these homebrew games through EmulatorJS. They are
+not yet compiled with `psxw`. The compiler and its live JavaScript mod tools
+described below are a separate path. [Arcade source, licenses, and setup](demos/README.md).
+
 PlayStation to Web turns supported PlayStation 1 games into programs that run
 directly in a web browser. It also lets you modify a game while you're playing:
 change its rules, tweak values, and try new behavior through JavaScript mods
 without restarting your session.
 
-The first game is **Harvest Moon: Back to Nature**. This is an early developer
+The compiler's first game is **Harvest Moon: Back to Nature**. This is an early developer
 project built around that game's decompilation (reconstructed source code).
 Other games need their own source project and integration; you cannot just
 drop in any PlayStation disc and expect it to work.
@@ -33,8 +44,9 @@ lets browsers run compiled programs. It translates remaining PlayStation machine
 code ahead of time and supplies the graphics, audio, input, and disc services
 the game needs.
 
-You supply the matching game's disc image (`.cue` and `.bin` files) for its assets.
-Game discs and assets are not included in this repository.
+For compiled commercial games, you supply the matching game's disc image
+(`.cue` and `.bin` files) for its assets. Commercial game discs and assets are
+not included in this repository or the public arcade.
 
 ## Getting started
 

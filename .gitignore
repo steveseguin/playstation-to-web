@@ -9,3 +9,6 @@
 *.iso
 .worktrees/
 .claud/
+/node_modules/
+/dist/
+/test-results/

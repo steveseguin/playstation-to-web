@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.21)
+project(playstation_to_web_demos LANGUAGES C CXX ASM)
+psn00bsdk_add_executable(paddle-rally GPREL arcade.c)
+target_compile_definitions(paddle-rally PRIVATE GAME_BRICKS=0)
+psn00bsdk_add_executable(brick-shift GPREL arcade.c)
+target_compile_definitions(brick-shift PRIVATE GAME_BRICKS=1)
