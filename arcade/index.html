@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#17181c">
+  <meta name="theme-color" content="#141519">
   <meta name="description" content="A little arcade, right in your browser. Play free PlayStation homebrew, discover compiled games, and make room for your next mod.">
   <title>PlayStation to Web — The Arcade</title>
   <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
@@ -12,42 +12,40 @@
 </head>
 <body>
   <a href="#cabinet" class="skip">Skip to game player</a>
-  <header class="site-header">
-    <a class="brand" href="./" aria-label="PlayStation to Web home"><img src="assets/mark.svg" width="36" height="36" alt=""><span>PlayStation<span class="brand-bottom">to Web<span class="brand-dot">.</span></span></span></a>
-    <nav aria-label="Main navigation"><a class="nav-active" href="#library">The arcade</a><a href="https://github.com/steveseguin/playstation-to-web#readme" target="_blank" rel="noreferrer">About the project <span aria-hidden="true">↗</span></a><a class="github" href="https://github.com/steveseguin/playstation-to-web" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a></nav>
-  </header>
-  <main>
-    <section class="intro" aria-labelledby="intro-heading">
-      <div><p class="eyebrow"><span class="signal"></span> NO QUARTERS REQUIRED</p><h1 id="intro-heading">Old-school soul.<br><span>New playground.</span></h1><p class="intro-copy">Pick a game. Get comfortable. Make it your own.</p></div>
-      <div class="intro-aside"><span class="symbols" aria-hidden="true">△ ○ × □</span><p>A little arcade, right in your browser.<br>Built for players. Open to tinkerers.</p><a href="#library">Find your next game <span aria-hidden="true">↙</span></a></div>
-    </section>
-    <div class="arcade-layout">
-      <aside id="library" class="library" aria-labelledby="library-title">
-        <div class="section-label"><h2 id="library-title">THE COLLECTION</h2><span id="game-count">03</span></div>
-        <div class="filters" role="group" aria-label="Filter games"><button class="active" data-filter="all" aria-pressed="true">All games</button><button data-filter="ready" aria-pressed="false">Ready to play <span>2</span></button></div>
-        <div id="game-list" class="game-list"></div>
-        <div class="library-note"><span aria-hidden="true">↗</span><div><strong>The collection starts here.</strong><p>Two free homebrew games.<br>More worlds to come.</p><a href="https://github.com/steveseguin/playstation-to-web/tree/main/demos" target="_blank" rel="noreferrer">Explore the source</a></div></div>
-      </aside>
-      <section class="play-column" aria-labelledby="game-title">
-        <div class="now-playing"><span><span class="signal"></span> <span id="session-label">ON THE MARQUEE</span></span><span id="engine-label">PS1 HOMEBREW · EMULATOR</span></div>
-        <div id="cabinet" class="cabinet" tabindex="-1">
-          <div class="cabinet-top"><span class="cabinet-wordmark">P / W <span>ARCADE SYSTEM</span></span><span class="power"><i></i> POWER</span></div>
-          <div id="screen" class="screen">
-            <div id="preview" class="preview"><div id="screen-art" aria-hidden="true"></div><div class="preview-content"><p id="screen-kicker" class="eyebrow">PLAYER ONE, YOU'RE UP</p><h2 id="screen-title">Paddle Rally</h2><p id="screen-description">A classic rivalry. One more rally.</p><button id="play" class="play-button"><span aria-hidden="true">▶</span> Play now</button><span id="play-note" class="play-note">Free homebrew · No download or disc needed</span></div><span class="screen-corner left">P1</span><span class="screen-corner right">INSERT CURIOSITY</span></div>
-            <div id="game-mount" hidden></div>
-          </div>
-          <div class="cabinet-bottom"><span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span>GOOD GAMES NEVER GET OLD.</span><span class="cabinet-buttons" aria-hidden="true"><i></i><i></i></span></div>
+  <main class="arcade">
+    <h1 class="brand-title"><a class="brand" href="./" aria-label="PlayStation to Web home"><img src="assets/mark.svg" width="28" height="28" alt=""><span>PlayStation <span class="brand-bottom">to Web<span class="brand-dot">.</span></span></span></a></h1>
+    <aside id="library" class="library" aria-labelledby="library-title">
+      <div class="section-label"><h2 id="library-title">The collection</h2><span id="game-count">03</span></div>
+      <div class="filters" role="group" aria-label="Filter games"><button class="active" data-filter="all" aria-pressed="true">All games</button><button data-filter="ready" aria-pressed="false">Ready to play <span>2</span></button></div>
+      <div id="game-list" class="game-list"></div>
+      <a class="more-link" href="#about">About the project &amp; mods <span aria-hidden="true">↓</span></a>
+    </aside>
+    <section class="stage" aria-label="Game player">
+      <div id="cabinet" class="cabinet" tabindex="-1">
+        <div class="cabinet-top"><span class="cabinet-wordmark">P / W <span>ARCADE SYSTEM</span></span><span class="now-playing"><span class="signal"></span><span id="session-label">ON THE MARQUEE</span><span class="engine-sep" aria-hidden="true">·</span><span id="engine-label">PS1 HOMEBREW · EMULATOR</span></span></div>
+        <div id="screen" class="screen">
+          <div id="preview" class="preview"><div id="screen-art" aria-hidden="true"></div><div class="preview-content"><p id="screen-kicker" class="eyebrow">PLAYER ONE, YOU'RE UP</p><h2 id="screen-title">Paddle Rally</h2><p id="screen-description">A classic rivalry. One more rally.</p><button id="play" class="play-button"><span aria-hidden="true">▶</span> Play now</button><span id="play-note" class="play-note">Free homebrew · No download or disc needed</span></div><span class="screen-corner left">P1</span><span class="screen-corner right">INSERT CURIOSITY</span></div>
+          <div id="game-mount" hidden></div>
         </div>
-        <div class="game-info"><div><p id="game-category" class="eyebrow"></p><h2 id="game-title"></h2><p id="game-subtitle"></p></div><div class="game-actions"><button id="restart" class="icon-button" disabled title="Restart game" aria-label="Restart game">↻</button><button id="stop" class="icon-button" disabled title="Stop game" aria-label="Stop game">■</button><button id="fullscreen" class="icon-button" title="Fullscreen" aria-label="Fullscreen game player">⛶</button><button id="open-mods" class="mod-button"><span aria-hidden="true">✳</span> Apply mod <span id="mod-count">0</span></button></div></div>
-        <p id="game-description" class="game-description"></p>
-        <p id="status" class="status" role="status" aria-live="polite">Ready when you are.</p>
-        <section class="controls" aria-labelledby="controls-title"><div class="controls-heading"><h3 id="controls-title">KNOW YOUR CONTROLS</h3><span id="gamepad-status">Keyboard + gamepad</span></div><div id="controls-list"></div><p>Click inside the game to focus. On mobile, use the player's touch controls.</p></section>
-        <p class="engine-note" id="engine-note">These original PS1 homebrew demos use EmulatorJS. They are not yet compiled with psxw.</p>
-      </section>
-    </div>
-    <section class="mod-teaser"><span class="mod-star" aria-hidden="true">✳</span><div><p class="eyebrow">PLAY IT YOUR WAY</p><h2>Same game. Your rules.</h2><p>A brighter paddle. A bigger target. A faster rally.<br>Try live mods in both free games, then keep playing.</p></div><button id="explore-mods">Explore mods <span aria-hidden="true">↗</span></button></section>
+      </div>
+    </section>
+    <section class="info" aria-labelledby="game-title">
+      <p id="game-category" class="eyebrow"></p>
+      <h2 id="game-title"></h2>
+      <p id="game-subtitle"></p>
+      <p id="game-description" class="game-description"></p>
+      <div class="game-actions"><button id="open-mods" class="mod-button"><span aria-hidden="true">✳</span> Apply mod <span id="mod-count">0</span></button><button id="restart" class="icon-button" disabled title="Restart game" aria-label="Restart game">↻</button><button id="stop" class="icon-button" disabled title="Stop game" aria-label="Stop game">■</button><button id="fullscreen" class="icon-button" title="Fullscreen" aria-label="Fullscreen game player">⛶</button></div>
+      <p id="status" class="status" role="status" aria-live="polite">Ready when you are.</p>
+      <section class="controls" aria-labelledby="controls-title"><div class="controls-heading"><h3 id="controls-title">Controls</h3><span id="gamepad-status">Keyboard + gamepad</span></div><div id="controls-list"></div><p>Click inside the game to focus. On mobile, use the player's touch controls.</p></section>
+      <p class="engine-note" id="engine-note">These original PS1 homebrew demos use EmulatorJS. They are not yet compiled with psxw.</p>
+    </section>
   </main>
-  <footer><span>PlayStation to Web <span class="footer-muted">/ An open-source playground.</span></span><div><a href="credits.html">Credits & licenses</a><a href="https://github.com/steveseguin/playstation-to-web/issues" target="_blank" rel="noreferrer">Report an issue ↗</a></div><p>Independent project. Not affiliated with Sony Interactive Entertainment.</p></footer>
+  <section id="about" class="about" aria-labelledby="intro-heading">
+    <div class="about-intro"><p class="eyebrow"><span class="signal"></span> NO QUARTERS REQUIRED</p><h2 id="intro-heading">Old-school soul.<br><span>New playground.</span></h2><p>A little arcade, right in your browser. Built for players. Open to tinkerers. Pick a game, get comfortable, make it your own.</p><div class="about-links"><a href="https://github.com/steveseguin/playstation-to-web#readme" target="_blank" rel="noreferrer">About the project <span aria-hidden="true">↗</span></a><a class="github" href="https://github.com/steveseguin/playstation-to-web" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a></div></div>
+    <div class="about-card mod-teaser"><span class="mod-star" aria-hidden="true">✳</span><p class="eyebrow">PLAY IT YOUR WAY</p><h3>Same game. Your rules.</h3><p>A brighter paddle. A bigger target. A faster rally. Try live mods in both free games, then keep playing.</p><button id="explore-mods">Explore mods <span aria-hidden="true">→</span></button></div>
+    <div class="about-card"><span class="mod-star" aria-hidden="true">△ ○ × □</span><p class="eyebrow">THE COLLECTION STARTS HERE</p><h3>More worlds to come.</h3><p>Two free, original PS1 homebrew games today, plus a look at the first title supported by the psxw compiler.</p><a class="card-link" href="https://github.com/steveseguin/playstation-to-web/tree/main/demos" target="_blank" rel="noreferrer">Explore the source <span aria-hidden="true">↗</span></a></div>
+  </section>
+  <footer><span>PlayStation to Web <span class="footer-muted">/ An open-source playground.</span></span><div><a href="credits.html">Credits &amp; licenses</a><a href="https://github.com/steveseguin/playstation-to-web/issues" target="_blank" rel="noreferrer">Report an issue ↗</a></div><p>Independent project. Not affiliated with Sony Interactive Entertainment.</p></footer>
   <dialog id="mods-dialog" aria-labelledby="mods-title">
     <button id="close-mods" class="dialog-close" aria-label="Close mods">×</button>
     <p class="eyebrow">THE MOD SLOT</p><h2 id="mods-title">Make it your own.</h2><p id="mods-game"></p>
