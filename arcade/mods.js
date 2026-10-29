@@ -16,13 +16,33 @@ export const modDefinitions = [
     { id: 'normal', label: 'Normal', values: [100] },
     { id: 'fast', label: 'Fast · 2× speed', values: [200] },
   ] },
+  { id: 'movement', label: 'Movement speed', default: 'normal', options: [
+    { id: 'slow', label: 'Slow · ½ speed', values: [0.5] },
+    { id: 'normal', label: 'Normal', values: [1] },
+    { id: 'fast', label: 'Fast · 2× speed', values: [2] },
+  ] },
+  { id: 'palette', label: 'Palette shift', default: 'original', options: [
+    { id: 'original', label: 'Original', values: [0] },
+    { id: 'half', label: 'Half shift', values: [0.5] },
+    { id: 'full', label: 'Full shift', values: [1] },
+  ] },
 ];
-export const defaultMods = () => Object.fromEntries(modDefinitions.map(mod => [mod.id, mod.default]));
+export const defaultMods = game => Object.fromEntries(modDefinitions
+  .filter(mod => (game?.mods || ['color', 'size', 'speed']).includes(mod.id)).map(mod => [mod.id, mod.default]));
+
+export function gridfallMods(selection) {
+  if (!selection || Object.keys(selection).sort().join() !== 'movement,palette') throw new Error('Invalid mod selection');
+  return Object.fromEntries(modDefinitions.filter(mod => ['movement', 'palette'].includes(mod.id)).map(mod => {
+    const option = mod.options.find(option => option.id === selection[mod.id]);
+    if (!option) throw new Error('Unknown mod option');
+    return [mod.id, option.values[0]];
+  }));
+}
 
 export function modWrites(game, selection) {
   if (!game.available || game.engine !== 'wasm' || !selection ||
       Object.keys(selection).sort().join() !== game.mods.slice().sort().join()) throw new Error('Invalid mod selection');
-  const options = Object.fromEntries(modDefinitions.map(mod => {
+  const options = Object.fromEntries(modDefinitions.filter(mod => game.mods.includes(mod.id)).map(mod => {
     const option = mod.options.find(option => option.id === selection[mod.id]);
     if (!option) throw new Error('Unknown mod option');
     return [mod.id, option.values];

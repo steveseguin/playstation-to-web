@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
+const results = process.env.TEST_RESULTS || 'test-results';
 const base = process.env.ARCADE_URL || 'http://127.0.0.1:4174';
 function observeWasm() {
   const instantiate = WebAssembly.instantiate;
@@ -65,8 +66,8 @@ try {
     try { if ((await fetch(base)).ok) break; } catch { /* wait for owned server */ }
     await new Promise(resolve => setTimeout(resolve, 150));
   }
-  await mkdir('test-results', { recursive: true });
-  browser = await chromium.launch({ headless: true });
+  await mkdir(results, { recursive: true });
+  browser = await chromium.launch({ headless: true, args: ['--renderer-process-limit=2', '--num-raster-threads=1'] });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   await page.addInitScript(observeWasm);
   const externalRequests = [];
@@ -80,10 +81,10 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(base);
-  assert.equal(await page.locator('.game-card').count(), 3);
-  await page.screenshot({ path: 'test-results/arcade-desktop.png', fullPage: true });
+  assert.equal(await page.locator('.game-card').count(), 4);
+  await page.screenshot({ path: results + '/arcade-desktop.png', fullPage: true });
   await page.locator('[data-filter="ready"]').click();
-  assert.equal(await page.locator('.game-card').count(), 2);
+  assert.equal(await page.locator('.game-card').count(), 3);
   await page.locator('[data-filter="all"]').click();
   await page.locator('#open-mods').click();
   assert.equal(await page.locator('#mods-dialog').evaluate(el => el.open), true);
@@ -245,6 +246,80 @@ try {
   const popup = await popupPromise;
   await popup.close();
 
+  console.log('Checking GRIDFALL: PS1 intro, movement, fire, audio, live mods, pause, and restart.');
+  await page.getByRole('button', { name: 'GRIDFALL, ready to play', exact: true }).click();
+  await page.locator('#play').click();
+  await page.waitForFunction(() => document.getElementById('session-label').textContent === 'NOW PLAYING');
+  const grid = page.frames().find(frame => frame.url().includes('gridfall-player.html'));
+  assert.equal(await grid.evaluate(() => gridfall.intro()), 1);
+  await grid.evaluate(() => {
+    window.originalGridfall = gridfall;
+    window.audioStarts = 0;
+    const start = AudioBufferSourceNode.prototype.start;
+    AudioBufferSourceNode.prototype.start = function (...args) { window.audioStarts++; return start.apply(this, args); };
+  });
+  await grid.locator('canvas').click();
+  await grid.waitForFunction(() => gridfall.intro() === 0);
+  await page.waitForTimeout(200);
+  const initial = await grid.evaluate(() => gridfall.state());
+  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(450); await page.keyboard.up('ArrowUp');
+  assert.notEqual((await grid.evaluate(() => gridfall.state()))[10], initial[10]);
+  await page.keyboard.down('Space'); await page.waitForTimeout(650); await page.keyboard.up('Space');
+  assert.ok((await grid.evaluate(() => gridfall.state()))[4] < initial[4]);
+  assert.ok(await grid.evaluate(() => audioStarts > 0), 'native sound events reach Web Audio');
+  await page.keyboard.press('KeyP');
+  await grid.waitForFunction(() => gridfall.state()[14] === 1);
+  const progress = await grid.evaluate(() => gridfall.state());
+  const pixels = () => grid.locator('canvas').evaluate(canvas => canvas.toDataURL());
+  const beforePalette = await pixels();
+  const movement = () => grid.evaluate(() => new DataView(testGame.memory.buffer).getUint32(testGame.ram_address() + (gridfall.manifest.symbols.forwardmove & 0x1fffff), true));
+  const originalMovement = await movement();
+  await page.locator('#open-mods').click();
+  assert.equal(await page.locator('#mod-fields select').count(), 2);
+  await page.locator('#mod-movement').selectOption('fast');
+  await page.locator('#mod-palette').selectOption('full');
+  await page.locator('#apply-mods').click();
+  await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Applied live'));
+  assert.equal(await movement(), originalMovement * 2, 'arcade movement mod writes PS1 memory');
+  assert.ok(await pixels() !== beforePalette, 'arcade palette mod changes rendered pixels');
+  // The native input clock (field 17) continues ticking while gameplay is paused.
+  assert.deepEqual((await grid.evaluate(() => gridfall.state())).filter((_, i) => i !== 17), progress.filter((_, i) => i !== 17), 'mods preserve progress and pause state');
+  assert.equal(await grid.evaluate(() => gridfall === originalGridfall), true, 'same running game instance');
+  console.log('GRIDFALL: live mods preserve the running session.');
+  await page.locator('#reset-mods').click();
+  await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Original settings restored'));
+  assert.equal(await movement(), originalMovement);
+  assert.ok(await pixels() === beforePalette, 'restoring palette restores the same frame');
+  console.log('GRIDFALL: defaults restored.');
+  await page.locator('#close-mods').click();
+  await grid.locator('canvas').click(); await page.keyboard.press('KeyP');
+  await grid.waitForFunction(() => gridfall.state()[14] === 0);
+  // Standard gamepad input goes through the same compiled controller path.
+  const beforePad = await grid.evaluate(() => {
+    window.fakePad = { mapping: 'standard', axes: [0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false })) };
+    Object.defineProperty(navigator, 'getGamepads', { value: () => [fakePad], configurable: true });
+    fakePad.buttons[15].pressed = true;
+    return gridfall.state();
+  });
+  await page.waitForTimeout(350);
+  await grid.evaluate(() => { fakePad.buttons[15].pressed = false; });
+  assert.notEqual((await grid.evaluate(() => gridfall.state()))[11], beforePad[11], 'standard gamepad turns the player');
+  console.log('GRIDFALL: gamepad input works.');
+  await page.screenshot({ path: results + '/arcade-gridfall.png', fullPage: true });
+  await page.locator('#restart').click();
+  await page.waitForFunction(() => document.getElementById('session-label').textContent === 'NOW PLAYING');
+  const resetGrid = page.frames().find(frame => frame.url().includes('gridfall-player.html'));
+  assert.ok(resetGrid !== grid, 'restart replaces GRIDFALL frame');
+  assert.equal(await resetGrid.evaluate(() => gridfall.intro()), 1);
+  await page.locator('#stop').click();
+  assert.equal(await page.locator('iframe').count(), 0);
+  const samplePage = await browser.newPage();
+  await samplePage.goto(base + '/sample.html');
+  const downloadEvent = samplePage.waitForEvent('download');
+  await samplePage.getByRole('link', { name: 'Download the sample' }).click();
+  assert.equal((await downloadEvent).suggestedFilename(), 'gridfall-ps1.zip');
+  await samplePage.close();
+
   const mobile = await browser.newPage({ ...devices['Pixel 7'], viewport: { width: 390, height: 844 } });
   await mobile.addInitScript(observeWasm);
   // Regression: Linux Chromium's Android emulation can report no touch points.
@@ -253,9 +328,9 @@ try {
   assert.equal(await mobile.locator('#game-title').textContent(), 'Brick Shift');
   assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no horizontal overflow on mobile');
   await mobile.locator('#open-mods').click();
-  await mobile.screenshot({ path: 'test-results/arcade-mobile-mods.png', fullPage: true });
+  await mobile.screenshot({ path: results + '/arcade-mobile-mods.png', fullPage: true });
   await mobile.locator('#close-mods').click();
-  await mobile.screenshot({ path: 'test-results/arcade-mobile.png', fullPage: true });
+  await mobile.screenshot({ path: results + '/arcade-mobile.png', fullPage: true });
   console.log('Checking mobile touch controls.');
   await mobile.locator('#play').tap();
   await mobile.waitForFunction(() => document.getElementById('session-label').textContent === 'NOW PLAYING', null, { timeout: 90000 });
@@ -273,15 +348,35 @@ try {
   const mobileCanvas = mobileFrame.locator('canvas').first();
   const touchLaunched = await mobileCanvas.screenshot();
   await mobile.waitForTimeout(400);
-  await mobile.screenshot({ path: 'test-results/arcade-mobile-playing.png', fullPage: true });
+  await mobile.screenshot({ path: results + '/arcade-mobile-playing.png', fullPage: true });
   assert.ok(!touchLaunched.equals(await mobileCanvas.screenshot()), 'touch launch animates the game');
   await mobile.locator('#open-mods').tap();
   await mobile.locator('#mod-color').selectOption('pink');
   await mobile.locator('#apply-mods').tap();
   await mobile.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Applied live'));
-  await mobile.screenshot({ path: 'test-results/arcade-mobile-applied.png', fullPage: true });
+  await mobile.screenshot({ path: results + '/arcade-mobile-applied.png', fullPage: true });
   await mobile.locator('#close-mods').tap();
   assert.equal(mobile.frames().find(f => f.url().includes('player.html')), mobileFrame, 'mobile mod keeps playing in the same session');
+  await mobile.getByRole('button', { name: 'GRIDFALL, ready to play', exact: true }).tap();
+  await mobile.locator('#play').tap();
+  await mobile.waitForFunction(() => document.getElementById('session-label').textContent === 'NOW PLAYING');
+  const mobileGrid = mobile.frames().find(frame => frame.url().includes('gridfall-player.html'));
+  await mobileGrid.locator('canvas').tap();
+  await mobileGrid.waitForFunction(() => gridfall.intro() === 0);
+  await mobile.waitForTimeout(200);
+  const mobileStart = await mobileGrid.evaluate(() => gridfall.state());
+  const up = mobileGrid.locator('#pad-up');
+  await up.scrollIntoViewIfNeeded();
+  const upBox = await up.boundingBox();
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: upBox.x + upBox.width / 2, y: upBox.y + upBox.height / 2 }] });
+  await mobile.waitForTimeout(400);
+  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  assert.notEqual((await mobileGrid.evaluate(() => gridfall.state()))[10], mobileStart[10], 'touch moves GRIDFALL');
+  await mobileGrid.locator('#pad-cross').tap();
+  await mobile.waitForTimeout(400);
+  assert.ok((await mobileGrid.evaluate(() => gridfall.state()))[4] < mobileStart[4], 'touch fires GRIDFALL');
+  await mobile.screenshot({ path: results + '/arcade-gridfall-mobile.png', fullPage: true });
+  assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   const offline = await browser.newPage();
   await offline.route('**/*.wasm?*', route => route.abort());
   await offline.goto(base);
@@ -292,7 +387,7 @@ try {
   assert.equal(await offline.locator('iframe').count(), 0);
   assert.deepEqual(errors, [], 'no uncaught browser errors');
   assert.deepEqual(externalRequests, [], 'gameplay requires no external services');
-  console.log('Passed: both compiled Wasm games boot and play; live color/size change the guest framebuffer; speed values reach Wasm memory; defaults restore; desktop and touch mod controls work.');
+  console.log('Passed: all three compiled games play; live mods and restoration work; GRIDFALL supports keyboard, gamepad input, touch and audio; sample download works.');
 } finally {
   await browser?.close();
   server?.kill();

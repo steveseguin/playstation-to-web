@@ -1,0 +1,16 @@
+{
+  "source": "https://github.com/steveseguin/gridfall",
+  "source_revision": "c9d99f3251c1418df7c19a14fd2e9ce9728b0e02",
+  "source_directory": "ps1",
+  "compiler_revision": "40d0989cf222ae2a2912def47bc64a2cece2632b",
+  "archive": "gridfall-ps1.zip",
+  "sha256": "79a7af430d397a1c7812546a1015f24cc7eaa8a53001651f16d358f392847bee",
+  "web_sha256": {
+    "build.json": "c8293e2d841415f3163e49ff486bc317b5cb146d3b3b38d7aacd4383a064c249",
+    "engine.mjs": "6cf488b883778a3e097a5cc14091960ba91ca45e27b3483c5454313ae2de5992",
+    "GRIDFALL.DAT": "d46c2dbb0ff765dc6b9204d9cc9a2690ea04b806b5d72d86f4e1ba9ffccede18",
+    "gridfall.exe": "b0bafb14a5b879fc709f25396177eee3c218ef07c586b5fc496ac4384b6aab55",
+    "gridfall.wasm": "7c4893afc745d228a7e58d2dde6ece9fb2e0db35ad8cedcfeef7296ea30522e6",
+    "SOUND.BNK": "14c998d402c2b6cb6e5c59106371a1452dcb15e280ee184c46972503d0507ab8"
+  }
+}

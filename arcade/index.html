@@ -15,14 +15,14 @@
   <main class="arcade">
     <h1 class="brand-title"><a class="brand" href="./" aria-label="PlayStation to Web home"><img src="assets/mark.svg" width="28" height="28" alt=""><span>PlayStation <span class="brand-bottom">to Web<span class="brand-dot">.</span></span></span></a></h1>
     <aside id="library" class="library" aria-labelledby="library-title">
-      <div class="section-label"><h2 id="library-title">The collection</h2><span id="game-count">03</span></div>
-      <div class="filters" role="group" aria-label="Filter games"><button class="active" data-filter="all" aria-pressed="true">All games</button><button data-filter="ready" aria-pressed="false">Ready to play <span>2</span></button></div>
+      <div class="section-label"><h2 id="library-title">The collection</h2><span id="game-count">04</span></div>
+      <div class="filters" role="group" aria-label="Filter games"><button class="active" data-filter="all" aria-pressed="true">All games</button><button data-filter="ready" aria-pressed="false">Ready to play <span>3</span></button></div>
       <div id="game-list" class="game-list"></div>
       <a class="more-link" href="#about">About the project &amp; mods <span aria-hidden="true">↓</span></a>
     </aside>
     <section class="stage" aria-label="Game player">
       <div id="cabinet" class="cabinet" tabindex="-1">
-        <div class="cabinet-top"><span class="cabinet-wordmark">P / W <span>ARCADE SYSTEM</span></span><span class="now-playing"><span class="signal"></span><span id="session-label">ON THE MARQUEE</span><span class="engine-sep" aria-hidden="true">·</span><span id="engine-label">PS1 HOMEBREW · EMULATOR</span></span></div>
+        <div class="cabinet-top"><span class="cabinet-wordmark">P / W <span>ARCADE SYSTEM</span></span><span class="now-playing"><span class="signal"></span><span id="session-label">ON THE MARQUEE</span><span class="engine-sep" aria-hidden="true">·</span><span id="engine-label">HOMEBREW · COMPILED WASM</span></span></div>
         <div id="screen" class="screen">
           <div id="preview" class="preview"><div id="screen-art" aria-hidden="true"></div><div class="preview-content"><p id="screen-kicker" class="eyebrow">PLAYER ONE, YOU'RE UP</p><h2 id="screen-title">Paddle Rally</h2><p id="screen-description">A classic rivalry. One more rally.</p><button id="play" class="play-button"><span aria-hidden="true">▶</span> Play now</button><span id="play-note" class="play-note">Free homebrew · No download or disc needed</span></div><span class="screen-corner left">P1</span><span class="screen-corner right">INSERT CURIOSITY</span></div>
           <div id="game-mount" hidden></div>
@@ -34,6 +34,7 @@
       <h2 id="game-title"></h2>
       <p id="game-subtitle"></p>
       <p id="game-description" class="game-description"></p>
+      <p id="game-links" class="engine-note" hidden><a href="sample.html">Try compiling this sample</a> · <a href="https://github.com/steveseguin/gridfall/tree/main/ps1" target="_blank" rel="noreferrer">Source</a></p>
       <div class="game-actions"><button id="open-mods" class="mod-button"><span aria-hidden="true">✳</span> Apply mod <span id="mod-count">0</span></button><button id="restart" class="icon-button" disabled title="Restart game" aria-label="Restart game">↻</button><button id="stop" class="icon-button" disabled title="Stop game" aria-label="Stop game">■</button><button id="fullscreen" class="icon-button" title="Fullscreen" aria-label="Fullscreen game player">⛶</button></div>
       <p id="status" class="status" role="status" aria-live="polite">Ready when you are.</p>
       <section class="controls" aria-labelledby="controls-title"><div class="controls-heading"><h3 id="controls-title">Controls</h3><span id="gamepad-status">Keyboard + gamepad</span></div><div id="controls-list"></div><p>Click inside the game to focus. On mobile, use the player's touch controls.</p></section>
@@ -41,9 +42,9 @@
     </section>
   </main>
   <section id="about" class="about" aria-labelledby="intro-heading">
-    <div class="about-intro"><p class="eyebrow"><span class="signal"></span> NO QUARTERS REQUIRED</p><h2 id="intro-heading">Old-school soul.<br><span>New playground.</span></h2><p>A little arcade, right in your browser. Built for players. Open to tinkerers. Pick a game, get comfortable, make it your own.</p><div class="about-links"><a href="https://github.com/steveseguin/playstation-to-web#readme" target="_blank" rel="noreferrer">About the project <span aria-hidden="true">↗</span></a><a class="github" href="https://github.com/steveseguin/playstation-to-web" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a></div></div>
-    <div class="about-card mod-teaser"><span class="mod-star" aria-hidden="true">✳</span><p class="eyebrow">PLAY IT YOUR WAY</p><h3>Same game. Your rules.</h3><p>A brighter paddle. A bigger target. A faster rally. Try live mods in both free games, then keep playing.</p><button id="explore-mods">Explore mods <span aria-hidden="true">→</span></button></div>
-    <div class="about-card"><span class="mod-star" aria-hidden="true">△ ○ × □</span><p class="eyebrow">THE COLLECTION STARTS HERE</p><h3>More worlds to come.</h3><p>Two free, original PS1 homebrew games today, plus a look at the first title supported by the psxw compiler.</p><a class="card-link" href="https://github.com/steveseguin/playstation-to-web/tree/main/demos" target="_blank" rel="noreferrer">Explore the source <span aria-hidden="true">↗</span></a></div>
+    <div class="about-intro"><p class="eyebrow"><span class="signal"></span> NO QUARTERS REQUIRED</p><h2 id="intro-heading">Old-school soul.<br><span>New playground.</span></h2><p>A little arcade, right in your browser. Built for players. Open to tinkerers. Pick a game, get comfortable, make it your own.</p><div class="about-links"><a href="https://github.com/steveseguin/playstation-to-web#readme" target="_blank" rel="noreferrer">About the project <span aria-hidden="true">↗</span></a><a href="sample.html">Try a compiler sample</a><a class="github" href="https://github.com/steveseguin/playstation-to-web" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a></div></div>
+    <div class="about-card mod-teaser"><span class="mod-star" aria-hidden="true">✳</span><p class="eyebrow">PLAY IT YOUR WAY</p><h3>Same game. Your rules.</h3><p>A brighter paddle. A bigger target. A faster rally. Try live mods in the free games, then keep playing.</p><button id="explore-mods">Explore mods <span aria-hidden="true">→</span></button></div>
+    <div class="about-card"><span class="mod-star" aria-hidden="true">△ ○ × □</span><p class="eyebrow">THE COLLECTION STARTS HERE</p><h3>More worlds to come.</h3><p>Three free homebrew games today, plus a look at the first title supported by the psxw compiler.</p><a class="card-link" href="https://github.com/steveseguin/playstation-to-web/tree/main/demos" target="_blank" rel="noreferrer">Explore the source <span aria-hidden="true">↗</span></a></div>
   </section>
   <footer><span>PlayStation to Web <span class="footer-muted">/ An open-source playground.</span></span><div><a href="credits.html">Credits &amp; licenses</a><a href="https://github.com/steveseguin/playstation-to-web/issues" target="_blank" rel="noreferrer">Report an issue ↗</a></div><p class="fork-credit">Forked from <a href="https://github.com/dpchamps-vibe-city/psx-wasm" target="_blank" rel="noreferrer">dpchamps-vibe-city/psx-wasm ↗</a>, the original project.</p><p>Independent project. Not affiliated with Sony Interactive Entertainment.</p></footer>
   <dialog id="mods-dialog" aria-labelledby="mods-title">

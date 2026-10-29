@@ -6,17 +6,18 @@
 
 **[Open the arcade — play in your browser](https://steveseguin.github.io/playstation-to-web/)**
 
-Try **Paddle Rally** and **Brick Shift**, two free, original PS1 homebrew games.
+Try **Paddle Rally**, **Brick Shift**, and **GRIDFALL**, three free homebrew games.
 Choose a game, press **Play now**, and find its controls below the screen.
 No disc or BIOS upload is needed. While playing, open **Apply mod** to change
-your paddle's color and size or slow down/speed up the ball. Press **Apply
+your paddle's color and size, ball speed, or GRIDFALL's movement and palette. Press **Apply
 changes** to see the result live, without restarting or losing progress.
 **Restore defaults** puts the original settings back. These changes last for
 the current session; restarting or switching games clears them.
 
-The arcade compiles both homebrew games directly from their C source into
-WebAssembly. Gameplay and live mod values run in the compiled binaries, with
-no emulator or BIOS. [Arcade source, licenses, and setup](demos/README.md).
+Paddle Rally and Brick Shift compile directly from C into WebAssembly.
+GRIDFALL is recompiled from its PS1 executable with psxw. Gameplay and live mod
+values run in the compiled binaries, with no emulator or BIOS.
+[Arcade setup](demos/README.md) · [Try a compiler sample](samples/gridfall/README.md).
 
 PlayStation to Web turns supported PlayStation 1 games into programs that run
 directly in a web browser. It also lets you modify a game while you're playing:

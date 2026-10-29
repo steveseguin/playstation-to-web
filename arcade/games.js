@@ -17,6 +17,14 @@ export const games = [
     mods: ['color', 'size', 'speed'],
   },
   {
+    id: 'gridfall', title: 'GRIDFALL', subtitle: 'Find your way out of the Transit Depot.',
+    category: 'ACTION / FPS', year: '2026', color: '#90b7ad', art: 'gridfall',
+    description: 'The machines have taken the depot. Explore the corridors, find supplies, and fight your way to the exit.',
+    engine: 'psxw', player: 'gridfall-player.html', available: true,
+    controls: [{ keys: ['↑', '↓', '←', '→'], label: 'Move / turn' }, { keys: ['Space', 'E'], label: 'Fire / use doors' }, { keys: ['A', 'D', 'Shift'], label: 'Strafe / run' }, { keys: ['1–8', 'Q'], label: 'Select / cycle weapon' }, { keys: ['P', 'Enter'], label: 'Pause / skip intro' }],
+    mods: ['movement', 'palette'],
+  },
+  {
     id: 'btn', title: 'Harvest Moon', subtitle: 'Back to Nature',
     category: 'FARMING / LIFE SIM', year: '2000', color: '#a9c99a', art: 'farm',
     description: 'The first game supported by the PlayStation to Web compiler. Run your own browser build with your matching disc, then experiment with live JavaScript mods.',

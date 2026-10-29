@@ -6,6 +6,10 @@ from [arcade.c](arcade.c) into WebAssembly. Their rules, physics, score, and
 live mod values run in the compiled game. No emulator, BIOS, or disc is needed.
 The same source also supports PS1 builds.
 
+The arcade also includes [GRIDFALL](../samples/gridfall/README.md), a single-map
+FPS recompiled from its PS1 executable. Its prebuilt player and downloadable
+compiler sample are packaged automatically by `npm run build`.
+
 ## Build and play
 
 On Ubuntu or Debian, install Clang and LLD (`sudo apt-get install clang lld`),

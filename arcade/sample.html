@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Try a compiler sample — PlayStation to Web</title><link rel="stylesheet" href="style.css"><link rel="icon" href="assets/mark.svg" type="image/svg+xml"><style>main.sample{display:block;max-width:800px;padding:35px 24px;margin:auto}pre{overflow:auto;padding:18px;background:#20232b;border-radius:8px;line-height:1.7}p,li{line-height:1.7}h1{font-size:32px}h2{margin-top:30px}a{color:#b9d8cd}</style></head>
+<body><main class="sample"><a href="./">← Back to the arcade</a><h1>Try a compiler sample</h1>
+<p>Use GRIDFALL’s single-map PS1 port to try the compiler with a complete, freely available game. The package includes the native PS1 executable, disc image, symbols, source, assets, and browser player.</p>
+<p><a href="samples/gridfall-ps1.zip" download>Download the sample</a> · <a href="./?game=gridfall">Play the precompiled version</a> · <a href="https://github.com/steveseguin/gridfall/tree/main/ps1">Game source</a></p>
+<h2>Recompile the PS1 executable</h2>
+<p>On Linux or WSL, install Python 3.10+, Git, Rust 1.94.1, and Clang with the WebAssembly target and <code>wasm-ld</code>. Extract the download and run:</p>
+<pre><code>cd gridfall-ps1
+bash tools/build-web.sh
+python3 tools/serve.py</code></pre>
+<p>Open <a href="http://localhost:8196/">localhost:8196</a>. The build downloads a pinned psxw revision, translates the bundled PS1 machine code, then links it into WebAssembly. No BIOS or commercial game files are needed.</p>
+<h2>Change the source</h2>
+<p>To rebuild the PS1 game first, also install CMake, Make, curl, and unzip, then run <code>bash tools/build.sh</code> before the web build. The native build downloads a pinned PSn00bSDK toolchain. Load <code>build/gridfall.cue</code> with <code>gridfall.bin</code> beside it to play the PS1 version.</p>
+<p>In a PlayStation to Web checkout, <code>bash scripts/build-gridfall.sh</code> extracts and recompiles the same sample; add <code>--from-source</code> to rebuild its PS1 executable too.</p>
+<p>While playing in the arcade, open <strong>Apply mod</strong> to change movement speed or palette without restarting. The standalone player has the same controls in its live mods panel.</p>
+<p><small><a href="samples/gridfall.json">Package version and hashes</a> · <a href="credits.html">Licenses</a> · <a href="https://github.com/steveseguin/gridfall">About GRIDFALL</a></small></p>
+</main></body></html>

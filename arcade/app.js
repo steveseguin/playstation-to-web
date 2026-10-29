@@ -56,7 +56,9 @@ function select(game, updateHistory = true) {
   $('engine-label').textContent = game.engine === 'wasm' ? 'HOMEBREW · COMPILED WASM' : 'PSXW · COMPILED GAME';
   $('engine-note').textContent = game.engine === 'wasm'
     ? 'These original homebrew games compile directly from C to WebAssembly, with live mods and no emulator.'
+    : game.id === 'gridfall' ? 'Recompiled from the PS1 executable with psxw. Live mods change the running game’s speed and palette.'
     : 'This game runs through the psxw compiler. Commercial game code and assets are not hosted here.';
+  $('game-links').hidden = game.id !== 'gridfall';
   $('mod-count').textContent = game.mods.length;
   $('controls-list').replaceChildren();
   for (const control of game.controls) {
@@ -87,11 +89,11 @@ function play() {
   frame.allow = 'autoplay; fullscreen; gamepad; screen-wake-lock';
   frame.allowFullscreen = true;
   // Keep the top-level page and player consistent about touch controls.
-  frame.src = `player.html?game=${encodeURIComponent(selected.id)}&touch=${wantsTouchControls() ? 1 : 0}`;
+  frame.src = `${selected.player || 'player.html'}?game=${encodeURIComponent(selected.id)}&touch=${wantsTouchControls() ? 1 : 0}`;
   $('preview').hidden = true;
   $('game-mount').hidden = false;
   $('game-mount').append(frame);
-  active = { game: selected, frame, ready: false, mods: defaultMods() };
+  active = { game: selected, frame, ready: false, mods: defaultMods(selected) };
   $('restart').disabled = $('stop').disabled = false;
   $('session-label').textContent = 'LOADING THE GOOD STUFF';
   status('Loading the player and game. The first visit may take a moment…');
@@ -106,7 +108,7 @@ addEventListener('message', event => {
     if ($('mods-dialog').open) $('mod-status').textContent = active.ready ? 'Changes take effect when you press Apply changes.' : 'Mod settings could not load. Restart the game and try again.';
     clearTimeout(loadTimer);
     $('session-label').textContent = 'NOW PLAYING';
-    status('Game loaded. Press X or tap × to launch. Enter / Start pauses.');
+    status(active.game.id === 'gridfall' ? 'Game loaded. Press Enter or tap the screen to skip the intro. E opens doors; Space fires.' : 'Game loaded. Press X or tap × to launch. Enter / Start pauses.');
     active.frame.focus();
   } else if (event.data?.type === 'arcade-mods-applied' || event.data?.type === 'arcade-mods-error') {
     if (!pendingMods || event.data.request !== pendingMods.request) return;
@@ -140,7 +142,7 @@ function openMods() {
   $('mod-fields').replaceChildren();
   $('mod-editor').hidden = !selected.mods.length;
   $('empty-mods').hidden = !!selected.mods.length;
-  const selection = active?.mods || defaultMods();
+  const selection = active?.mods || defaultMods(selected);
   for (const mod of modDefinitions.filter(mod => selected.mods.includes(mod.id))) {
     const label = document.createElement('label');
     label.textContent = mod.label;
@@ -160,7 +162,7 @@ function updateModButtons() {
 }
 function applyMods(restore = false) {
   if (!active?.ready || pendingMods) return;
-  const selection = restore ? defaultMods() : Object.fromEntries(selected.mods.map(id => [id, $(`mod-${id}`).value]));
+  const selection = restore ? defaultMods(selected) : Object.fromEntries(selected.mods.map(id => [id, $(`mod-${id}`).value]));
   if (restore) for (const [id, value] of Object.entries(selection)) $(`mod-${id}`).value = value;
   pendingMods = { request: ++requestNumber, selection, restore };
   $('mod-status').textContent = 'Applying…';
