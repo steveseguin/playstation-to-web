@@ -1,5 +1,7 @@
 # PlayStation to Web
 
+> This is a fork of [dpchamps-vibe-city/psx-wasm](https://github.com/dpchamps-vibe-city/psx-wasm), the original project.
+
 **Play, debug, and remix original PlayStation games in your browser. Vibe the game as you play.**
 
 **[Open the arcade — play in your browser](https://steveseguin.github.io/playstation-to-web/)**

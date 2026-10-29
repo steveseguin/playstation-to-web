@@ -119,6 +119,9 @@ footer{max-width:1800px;margin:auto;padding:0 24px 28px;display:flex;align-items
 footer>div{display:flex;gap:24px;color:var(--muted)}
 footer>div a:hover{color:var(--text)}
 footer>p{width:100%;font-size:10px;color:#6f7079}
+footer>.fork-credit{font-size:12px;color:var(--muted)}
+.fork-credit a{color:#f6c1a4}
+.fork-credit a:hover{color:var(--text)}
 
 dialog{color:var(--text);background:#222328;border:1px solid #4d4a51;border-radius:14px;padding:34px;width:min(480px,calc(100% - 32px));box-shadow:0 25px 100px #0008}
 dialog::backdrop{background:#090910b8;backdrop-filter:blur(5px)}

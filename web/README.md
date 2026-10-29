@@ -1,5 +1,7 @@
 # PlayStation to Web: browser player and live mods
 
+> This is a fork of [dpchamps-vibe-city/psx-wasm](https://github.com/dpchamps-vibe-city/psx-wasm), the original project.
+
 Play supported PlayStation games in your browser and change them while you play.
 The player supports keyboard and gamepad input, sound, saved games, and live
 JavaScript mods in a build with mod support enabled.

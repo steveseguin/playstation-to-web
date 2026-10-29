@@ -1,5 +1,7 @@
 # PlayStation to Web: design sketch
 
+> This is a fork of [dpchamps-vibe-city/psx-wasm](https://github.com/dpchamps-vibe-city/psx-wasm), the original project.
+
 Status: **M0 and M1 implemented (2026-10-26); the M3 device oracle is in
 place apart from its whole-game tasks.** The numbers in this
 document were measured against `btn-decompilation@3a15992` (working tree

@@ -1,5 +1,7 @@
 # PlayStation to Web: developer guide
 
+> This is a fork of [dpchamps-vibe-city/psx-wasm](https://github.com/dpchamps-vibe-city/psx-wasm), the original project.
+
 Play, debug, and modify supported PlayStation games in your browser, including
 live JavaScript mod changes while playing. See the [project overview](README.md)
 for a plain-language introduction and the [live mod guide](web/README.md#script-mods)

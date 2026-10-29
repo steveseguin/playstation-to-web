@@ -1,5 +1,7 @@
 # btn's test mods
 
+> This is a fork of [dpchamps-vibe-city/psx-wasm](https://github.com/dpchamps-vibe-city/psx-wasm), the original project.
+
 PlayStation to Web's own mods for btn, which the CI gate `mods` runs (plans/M11).
 They contain only our code. The acceptance mod, better-rand, lives in the
 separate `btn-mods` repository that `inputs.lock` pins.

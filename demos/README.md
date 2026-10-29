@@ -1,5 +1,7 @@
 # Free PS1 arcade demos
 
+> This is a fork of [dpchamps-vibe-city/psx-wasm](https://github.com/dpchamps-vibe-city/psx-wasm), the original project.
+
 **Paddle Rally** (paddle vs. computer, first to seven) and **Brick Shift**
 (40-brick breakout, three lives) are original homebrew games created for this
 project with AI coding assistance. Both compile from `arcade.c` into real PS1
