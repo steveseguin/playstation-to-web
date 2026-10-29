@@ -14,9 +14,9 @@ changes** to see the result live, without restarting or losing progress.
 **Restore defaults** puts the original settings back. These changes last for
 the current session; restarting or switching games clears them.
 
-The arcade currently plays these homebrew games through EmulatorJS. They are
-not yet compiled with `psxw`. The compiler and its live JavaScript mod tools
-described below are a separate path. [Arcade source, licenses, and setup](demos/README.md).
+The arcade compiles both homebrew games directly from their C source into
+WebAssembly. Gameplay and live mod values run in the compiled binaries, with
+no emulator or BIOS. [Arcade source, licenses, and setup](demos/README.md).
 
 PlayStation to Web turns supported PlayStation 1 games into programs that run
 directly in a web browser. It also lets you modify a game while you're playing:
@@ -87,7 +87,7 @@ flowchart TD
 **Decompilation happens upstream:** people reconstruct the game's source in a
 separate project. `psxw` uses that work and translates the remaining machine code
 before play. The resulting WebAssembly runs the compiled game in the browser.
-The public arcade's EmulatorJS demos use a separate playback path.
+The homebrew arcade compiles its original C source directly with Clang.
 
 For compiled commercial games, you supply the matching game's disc image
 (`.cue` and `.bin` files) for its assets. Commercial game discs and assets are

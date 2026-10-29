@@ -4,7 +4,52 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
 const base = process.env.ARCADE_URL || 'http://127.0.0.1:4174';
-const assetBase = base.endsWith('/') ? base : base + '/';
+function observeWasm() {
+  const instantiate = WebAssembly.instantiate;
+  window.testModAudits = [];
+  window.testInstances = 0;
+  let pendingMod;
+  addEventListener('message', event => {
+    if (event.source !== parent || event.origin !== location.origin || event.data?.type !== 'arcade-apply-mods') return;
+    pendingMod = { before: structuredClone(window.testDrawn), started: performance.now(), instance: window.testGame };
+  });
+  WebAssembly.instantiate = async (...args) => {
+    const imports = args[1]?.arcade;
+    if (imports) {
+      const rect = imports.rect, text = imports.text;
+      imports.rect = (...values) => {
+        // This is the first primitive emitted by every compiled game_render.
+        if (values[0] === 10 && values[1] === 32 && values[2] === 300 && values[3] === 2) {
+          window.testDrawn = { rectangles: [], labels: [] };
+          if (pendingMod) {
+            const wasm = window.testGame;
+            const memory = new DataView(wasm.memory.buffer);
+            window.testModAudits.push({
+              before: pendingMod.before, after: window.testDrawn,
+              sameInstance: pendingMod.instance === wasm,
+              elapsed: performance.now() - pendingMod.started,
+              values: Object.fromEntries(['accent_red', 'accent_green', 'accent_blue', 'paddle_width', 'paddle_height', 'ball_speed'].map(name => [name, memory.getInt32(wasm[name].value, true)])),
+            });
+            pendingMod = null;
+          }
+        }
+        window.testDrawn.rectangles.push(values);
+        return rect(...values);
+      };
+      imports.text = (x, y, pointer) => {
+        const memory = new Uint8Array(window.testGame.memory.buffer);
+        let end = pointer;
+        while (memory[end]) end++;
+        window.testDrawn.labels.push([x, y, new TextDecoder().decode(memory.subarray(pointer, end))]);
+        return text(x, y, pointer);
+      };
+    }
+    const result = await instantiate(...args);
+    window.testGame = (result.instance || result).exports;
+    window.testInstances++;
+    return result;
+  };
+}
 async function waitForGuest(predicate, message) {
   const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {
@@ -23,6 +68,15 @@ try {
   await mkdir('test-results', { recursive: true });
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  await page.addInitScript(observeWasm);
+  const externalRequests = [];
+  await page.route('**/*', route => {
+    if (new URL(route.request().url()).origin !== new URL(base).origin) {
+      externalRequests.push(route.request().url());
+      return route.abort();
+    }
+    return route.continue();
+  });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(base);
@@ -65,7 +119,7 @@ try {
     await page.keyboard.press('Enter', { delay: 120 });
     await page.waitForTimeout(200);
     const bounds = await canvas.boundingBox();
-    // Exclude the emulator's auto-hiding toolbar from the gameplay comparison.
+    // Compare the playfield while paused.
     const clip = { x: bounds.x + bounds.width * .02, y: bounds.y + bounds.height * .15,
       width: bounds.width * .96, height: bounds.height * .65 };
     const paused = await page.screenshot({ clip });
@@ -73,32 +127,13 @@ try {
     assert.ok(paused.equals(await page.screenshot({ clip })), `${title}: pause freezes the game`);
     await page.screenshot({ path: `test-results/${id}-playing.png`, fullPage: true });
     console.log(`Checking ${title}: live color, size, speed and restoring defaults.`);
-    // Capture the guest framebuffer directly: dialogs and emulator toolbars
-    // must not count as evidence that an in-game mod changed the picture.
-    const guestImage = async () => Buffer.from(await frame.evaluate(async () =>
-      Array.from(await window.EJS_emulator.gameManager.screenshot())));
+    // Inspect the actual canvas and compiled module, independently of UI messages.
+    const guestImage = async () => Buffer.from(await canvas.evaluate(el => el.toDataURL().split(',')[1]), 'base64');
     const original = await guestImage();
-    // Locate the compiled globals in the core's saved RAM, independently of
-    // the UI acknowledgement. This also verifies the speed code really writes
-    // the game's variable (speed does not change a paused screenshot).
-    const manifest = await (await fetch(new URL('mod-manifest.json', assetBase))).json();
-    const symbols = manifest[id].symbols;
-    const exe = Buffer.from(await (await fetch(new URL(`games/${id}.exe`, assetBase))).arrayBuffer());
-    const firstAddress = Math.min(...Object.values(symbols));
-    const lastAddress = Math.max(...Object.values(symbols));
-    const fileOffset = firstAddress - exe.readUInt32LE(0x18) + 2048;
-    const signature = exe.subarray(fileOffset, fileOffset + lastAddress - firstAddress + 4);
-    const guestState = async () => Buffer.from(await frame.evaluate(() => {
-      const bytes = window.EJS_emulator.gameManager.getState();
-      const chunks = [];
-      for (let i = 0; i < bytes.length; i += 8192) chunks.push(String.fromCharCode(...bytes.subarray(i, i + 8192)));
-      return btoa(chunks.join(''));
-    }), 'base64');
-    const initialState = await guestState();
-    const ramOffset = initialState.indexOf(signature);
-    assert.ok(ramOffset >= 0, `${title}: locate mod globals in saved PS1 RAM`);
-    assert.equal(initialState.lastIndexOf(signature), ramOffset, 'RAM signature must be unique');
-    const speedOffset = ramOffset + symbols.ball_speed - firstAddress;
+    const readGlobal = name => frame.evaluate(name => {
+      const wasm = window.testGame;
+      return new DataView(wasm.memory.buffer).getInt32(wasm[name].value, true);
+    }, name);
     for (const [mod, option] of [['color', 'mint'], ['size', 'large']]) {
       await page.locator('#open-mods').click();
       assert.match(await page.locator('#mods-game').textContent(), new RegExp(title));
@@ -107,12 +142,10 @@ try {
       await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Applied live'));
       const symbol = mod === 'color' ? 'accent_green' : id === 'brick-shift' ? 'paddle_width' : 'paddle_height';
       const expected = mod === 'color' ? 240 : id === 'brick-shift' ? 80 : 72;
-      await waitForGuest(async () => (await guestState()).readUInt32LE(ramOffset + symbols[symbol] - firstAddress) === expected,
-        `${title}: ${mod} reaches PS1 RAM`);
-      // The emulator applies cheats and presents frames asynchronously. Wait
-      // for the guest result, rather than assuming CI renders within 200 ms.
+      await waitForGuest(async () => (await readGlobal(symbol)) === expected,
+        `${title}: ${mod} reaches Wasm memory`);
       try {
-        await waitForGuest(async () => !original.equals(await guestImage()), `${title}: ${mod} changes the actual PS1 framebuffer`);
+        await waitForGuest(async () => !original.equals(await guestImage()), `${title}: ${mod} changes the actual game framebuffer`);
       } catch (error) {
         await writeFile(`test-results/${id}-${mod}-before.png`, original);
         await writeFile(`test-results/${id}-${mod}-after.png`, await guestImage());
@@ -129,18 +162,74 @@ try {
     await page.locator('#mod-speed').selectOption('fast');
     await page.locator('#apply-mods').click();
     await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Applied live'));
-    await waitForGuest(async () => (await guestState()).readUInt32LE(speedOffset) === 200, `${title}: fast speed reaches PS1 RAM`);
+    await waitForGuest(async () => (await readGlobal('ball_speed')) === 200, `${title}: fast speed reaches Wasm memory`);
     await page.locator('#close-mods').click();
     await page.locator('#open-mods').click();
     assert.equal(await page.locator('#mod-speed').inputValue(), 'fast', 'applied choices survive reopening');
     await page.locator('#mod-speed').selectOption('slow');
     await page.locator('#apply-mods').click();
     await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Applied live'));
-    await waitForGuest(async () => (await guestState()).readUInt32LE(speedOffset) === 50, `${title}: slow speed reaches PS1 RAM`);
+    await waitForGuest(async () => (await readGlobal('ball_speed')) === 50, `${title}: slow speed reaches Wasm memory`);
     await page.locator('#reset-mods').click();
     await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Original settings restored'));
-    await waitForGuest(async () => (await guestState()).readUInt32LE(speedOffset) === 100, `${title}: default speed restored in PS1 RAM`);
+    await waitForGuest(async () => (await readGlobal('ball_speed')) === 100, `${title}: default speed restored in Wasm memory`);
     await page.locator('#close-mods').click();
+    // Exercise the browser's standard gamepad path with controlled pad input.
+    await frame.evaluate(() => {
+      window.testPad = { mapping: 'standard', axes: [0, 0], buttons: Array.from({ length: 16 }, () => ({ pressed: false })) };
+      Object.defineProperty(navigator, 'getGamepads', { value: () => [window.testPad], configurable: true });
+      window.testPad.buttons[8].pressed = true;
+    });
+    await page.waitForTimeout(100);
+    await frame.evaluate(() => { window.testPad.buttons[8].pressed = false; });
+    const reset = await guestImage();
+    await frame.evaluate(id => { window.testPad.axes[id === 'brick-shift' ? 0 : 1] = 1; }, id);
+    await page.waitForTimeout(200);
+    await frame.evaluate(() => { window.testPad.axes = [0, 0]; });
+    assert.ok(!reset.equals(await guestImage()), `${title}: gamepad stick moves the paddle`);
+    await frame.evaluate(() => { window.testPad.buttons[0].pressed = true; });
+    await page.waitForTimeout(100);
+    await frame.evaluate(() => { window.testPad.buttons[0].pressed = false; });
+    const padLaunched = await guestImage();
+    await page.waitForTimeout(200);
+    assert.ok(!padLaunched.equals(await guestImage()), `${title}: gamepad launches the ball`);
+    await page.locator('#open-mods').click();
+    const whileOpen = await guestImage();
+    await page.waitForTimeout(100);
+    assert.ok(!whileOpen.equals(await guestImage()), `${title}: opening mods does not pause gameplay`);
+    await frame.evaluate(() => { window.testModAudits = []; });
+    await page.locator('#mod-color').selectOption('pink');
+    await page.locator('#mod-size').selectOption('large');
+    await page.locator('#mod-speed').selectOption('fast');
+    await page.locator('#apply-mods').click();
+    await page.waitForFunction(() => document.getElementById('mod-status').textContent.startsWith('Applied live'));
+    const audit = await frame.evaluate(() => window.testModAudits[0]);
+    assert.ok(audit, 'applying mods immediately renders the compiled game');
+    assert.equal(audit.sameInstance, true, 'live changes retain the compiled instance');
+    assert.equal(await frame.evaluate(() => window.testInstances), 1, 'no recompilation or instance replacement');
+    assert.deepEqual(audit.after.labels, audit.before.labels, 'score, lives and game phase survive applying mods');
+    assert.ok(!audit.before.labels.some(label => /PAUSED|LAUNCH|GAME OVER|WINS|WIN!/.test(label[2])), 'mods are tested during active play');
+    const ball = state => state.rectangles.find(r => r[2] === 6 && r[3] === 6);
+    const bricks = state => state.rectangles.filter(r => r[2] === 32 && r[3] === 12);
+    assert.deepEqual(ball(audit.after), ball(audit.before), 'applying mods does not reset ball position');
+    assert.deepEqual(bricks(audit.after), bricks(audit.before), 'destroyed bricks stay destroyed');
+    assert.equal(audit.values.ball_speed, 200);
+    const livePaddle = audit.after.rectangles.find(r => r[4] === 255 && r[5] === 80 && r[6] === 170);
+    assert.ok(livePaddle, 'compiled rendering immediately uses the new color');
+    assert.equal(livePaddle[id === 'brick-shift' ? 2 : 3], id === 'brick-shift' ? 80 : 72);
+    const liveImage = await guestImage();
+    await page.waitForTimeout(100);
+    assert.ok(!liveImage.equals(await guestImage()), 'the modified game continues moving');
+    console.log(`${title}: all mods applied during active play in ${audit.elapsed.toFixed(1)} ms; instance and progress preserved.`);
+    await page.locator('#close-mods').click();
+    await page.locator('#restart').click();
+    await page.waitForFunction(() => document.getElementById('session-label').textContent === 'NOW PLAYING');
+    const restarted = page.frames().find(f => f.url().includes('player.html'));
+    assert.notEqual(restarted, frame, 'restart replaces the old game instance');
+    assert.equal(await restarted.evaluate(() => {
+      const wasm = window.testGame;
+      return new DataView(wasm.memory.buffer).getInt32(wasm.ball_speed.value, true);
+    }), 100, 'restart resets mod values');
   }
   await page.locator('#stop').click();
   assert.equal(await page.locator('iframe').count(), 0);
@@ -157,6 +246,7 @@ try {
   await popup.close();
 
   const mobile = await browser.newPage({ ...devices['Pixel 7'], viewport: { width: 390, height: 844 } });
+  await mobile.addInitScript(observeWasm);
   // Regression: Linux Chromium's Android emulation can report no touch points.
   await mobile.addInitScript(() => Object.defineProperty(Navigator.prototype, 'maxTouchPoints', { get: () => 0, configurable: true }));
   await mobile.goto(base + '?game=brick-shift');
@@ -170,29 +260,14 @@ try {
   await mobile.locator('#play').tap();
   await mobile.waitForFunction(() => document.getElementById('session-label').textContent === 'NOW PLAYING', null, { timeout: 90000 });
   const mobileFrame = mobile.frames().find(frame => frame.url().includes('player.html'));
-  assert.equal(await mobileFrame.locator('.ejs_menu_bar').evaluate(el => el.classList.contains('ejs_menu_bar_hidden')), true, 'startup menu must not cover touch controls');
-  const cross = mobileFrame.locator('.ejs_virtualGamepad_button.b_cross');
-  await mobile.waitForTimeout(300);
-  try {
-    await cross.waitFor({ state: 'visible', timeout: 10000 });
-  } catch (error) {
-    console.log('Mobile diagnostics:', await mobileFrame.evaluate(() => ({
-      url: location.href, touch: navigator.maxTouchPoints, ua: navigator.userAgent,
-      options: window.EJS_defaultOptions, mobile: window.EJS_emulator?.isMobile,
-      pad: document.querySelector('.ejs_virtualGamepad_parent')?.outerHTML.slice(0, 900),
-      bounds: document.querySelector('.b_cross')?.getBoundingClientRect().toJSON(),
-    })));
-    throw error;
-  }
-  // Engine start precedes the PS1 program's GPU/pad initialization. Give the
-  // guest the same boot settling time as the desktop input check.
-  await mobile.waitForTimeout(1000);
+  const cross = mobileFrame.locator('#pad-cross');
+  await cross.waitFor({ state: 'visible', timeout: 10000 });
   await cross.tap({ trial: true });
   const touch = await cross.boundingBox();
   const session = await mobile.context().newCDPSession(mobile);
   await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: touch.x + touch.width / 2, y: touch.y + touch.height / 2 }] });
   await mobile.waitForTimeout(200);
-  assert.equal(await cross.evaluate(el => el.classList.contains('ejs_virtualGamepad_button_down')), true, 'native touch reaches the launch button');
+  assert.equal(await cross.evaluate(el => el.classList.contains('pressed')), true, 'native touch reaches the launch button');
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await mobile.waitForTimeout(500);
   const mobileCanvas = mobileFrame.locator('canvas').first();
@@ -208,7 +283,7 @@ try {
   await mobile.locator('#close-mods').tap();
   assert.equal(mobile.frames().find(f => f.url().includes('player.html')), mobileFrame, 'mobile mod keeps playing in the same session');
   const offline = await browser.newPage();
-  await offline.route('https://cdn.emulatorjs.org/**', route => route.abort());
+  await offline.route('**/*.wasm?*', route => route.abort());
   await offline.goto(base);
   await offline.locator('#play').click();
   await offline.waitForFunction(() => document.getElementById('status').classList.contains('error'));
@@ -216,7 +291,8 @@ try {
   await offline.locator('#stop').click();
   assert.equal(await offline.locator('iframe').count(), 0);
   assert.deepEqual(errors, [], 'no uncaught browser errors');
-  console.log('Passed: both PS1 games boot and play; live color/size change the guest framebuffer; speed values reach PS1 RAM; defaults restore; desktop and touch mod controls work.');
+  assert.deepEqual(externalRequests, [], 'gameplay requires no external services');
+  console.log('Passed: both compiled Wasm games boot and play; live color/size change the guest framebuffer; speed values reach Wasm memory; defaults restore; desktop and touch mod controls work.');
 } finally {
   await browser?.close();
   server?.kill();

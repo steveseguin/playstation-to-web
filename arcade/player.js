@@ -1,92 +1,175 @@
-import { games, EMULATOR_DATA } from './games.js';
+import { games } from './games.js';
 import { wantsTouchControls } from './input.js';
-import { cheatCodes } from './mods.js';
-const id = new URLSearchParams(location.search).get('game');
-const touchControls = new URLSearchParams(location.search).get('touch') === '1' || wantsTouchControls();
-const game = games.find(item => item.id === id && item.available && item.engine === 'emulator');
+import { applyMods, defaultMods } from './mods.js';
+
+const params = new URLSearchParams(location.search);
+const game = games.find(item => item.id === params.get('game') && item.available && item.engine === 'wasm');
+const touchControls = params.get('touch') === '1' || wantsTouchControls();
+const mount = document.getElementById('game');
+let runtime;
 let ready = false;
-const manifest = game ? await fetch('mod-manifest.json').then(response => {
-  if (!response.ok) throw new Error('Mod map unavailable');
-  return response.json();
-}).then(data => data[game.id]).catch(() => null) : null;
-const send = (type, extra = {}) => parent.postMessage({ type, modsReady: ready && !!manifest, ...extra }, location.origin);
+let keyboard = 0, pending = 0;
+const pointers = new Map();
+const keys = { ArrowUp: 16, ArrowRight: 32, ArrowDown: 64, ArrowLeft: 128, KeyX: 16384, Enter: 8, KeyV: 1 };
+const send = (type, extra = {}) => parent.postMessage({ type, modsReady: ready, ...extra }, location.origin);
+
 addEventListener('message', event => {
   if (event.origin !== location.origin || event.source !== parent || event.data?.type !== 'arcade-apply-mods') return;
   const { request, selection } = event.data;
   try {
-    if (!ready || !manifest) throw new Error('Mods are unavailable. Restart the game and try again.');
-    const codes = cheatCodes(game, selection, manifest.symbols);
-    // Pinned EmulatorJS 4.2.3 GameManager API. Use the same slots on every
-    // apply, including defaults: removing a cheat alone leaves RAM modified.
-    codes.forEach((code, index) => window.EJS_emulator.gameManager.setCheat(index, true, code));
+    if (!ready) throw new Error('Mods are unavailable. Restart the game and try again.');
+    applyMods(game, selection, runtime);
+    draw();
     send('arcade-mods-applied', { request, selection });
   } catch (error) {
     send('arcade-mods-error', { request, message: error.message });
   }
 });
-// The core requests an optional screen wake lock without catching rejection.
-// Background tabs and some browsers deny it; gameplay does not depend on it.
-addEventListener('unhandledrejection', event => {
-  if (event.reason?.name === 'NotAllowedError' && /wake lock/i.test(event.reason.message)) {
-    event.preventDefault();
-    console.info('Screen wake lock unavailable; the game can still run.');
-  }
+addEventListener('keydown', event => {
+  const bit = keys[event.code];
+  if (!bit) return;
+  event.preventDefault();
+  if (!event.repeat) pending |= bit;
+  keyboard |= bit;
 });
-function failed() {
+addEventListener('keyup', event => {
+  const bit = keys[event.code];
+  if (!bit) return;
+  event.preventDefault();
+  keyboard &= ~bit;
+});
+function releaseInputs() {
+  keyboard = pending = 0;
+  pointers.clear();
+  document.querySelectorAll('.pressed').forEach(button => button.classList.remove('pressed'));
+}
+addEventListener('blur', releaseInputs);
+let lastTime = null, elapsed = 0;
+document.addEventListener('visibilitychange', () => {
+  releaseInputs();
+  lastTime = null;
+  elapsed = 0;
+});
+function heldButtons() {
+  let held = keyboard;
+  for (const bit of pointers.values()) held |= bit;
+  for (const pad of navigator.getGamepads?.() || []) {
+    if (!pad || pad.mapping !== 'standard') continue;
+    const down = index => pad.buttons[index]?.pressed;
+    if (down(0)) held |= 16384;
+    if (down(8)) held |= 1;
+    if (down(9)) held |= 8;
+    if (down(12) || pad.axes[1] < -.4) held |= 16;
+    if (down(15) || pad.axes[0] > .4) held |= 32;
+    if (down(13) || pad.axes[1] > .4) held |= 64;
+    if (down(14) || pad.axes[0] < -.4) held |= 128;
+  }
+  return held;
+}
+const canvas = document.createElement('canvas');
+canvas.width = 320; canvas.height = 240;
+canvas.tabIndex = 0;
+canvas.setAttribute('aria-label', game ? `${game.title} game screen` : 'Game screen');
+canvas.addEventListener('pointerdown', () => canvas.focus());
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+let rectangles = [], labels = [];
+let font;
+function draw() {
+  rectangles = []; labels = [];
+  runtime.game_render();
+  ctx.fillStyle = '#121422';
+  ctx.fillRect(0, 0, 320, 240);
+  // Match the original PS1 ordering table: reverse primitives, then text.
+  for (const [x, y, w, h, r, g, b] of rectangles.reverse()) {
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(x, y, w, h);
+  }
+  for (const [x, y, value] of labels.reverse()) {
+    for (let i = 0; i < value.length; i++) {
+      const glyph = value.charCodeAt(i) - 33;
+      if (glyph >= 0 && glyph < 64) ctx.drawImage(font, (glyph % 16) * 8, Math.floor(glyph / 16) * 8, 8, 8, x + i * 8, y, 8, 8);
+    }
+  }
+}
+function animate(time) {
+  if (!ready) return;
+  if (lastTime !== null) elapsed += Math.min(time - lastTime, 100);
+  lastTime = time;
+  while (elapsed >= 1000 / 60) {
+    runtime.game_tick(heldButtons() | pending);
+    pending = 0;
+    elapsed -= 1000 / 60;
+  }
+  draw();
+  requestAnimationFrame(animate);
+}
+function addTouchControls() {
+  const controls = document.createElement('div');
+  controls.id = 'touch-controls';
+  const definitions = [['up', '↑', 16], ['left', '←', 128], ['down', '↓', 64], ['right', '→', 32], ['select', 'Reset', 1], ['start', 'Start', 8], ['cross', '×', 16384]];
+  for (const [id, label, bit] of definitions) {
+    const button = document.createElement('button');
+    button.id = `pad-${id}`;
+    button.textContent = label;
+    button.setAttribute('aria-label', id === 'cross' ? 'Launch / play again' : label);
+    button.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      button.setPointerCapture(event.pointerId);
+      pointers.set(event.pointerId, bit);
+      pending |= bit;
+      button.classList.add('pressed');
+    });
+    const release = event => {
+      pointers.delete(event.pointerId);
+      if (![...pointers.values()].includes(bit)) button.classList.remove('pressed');
+    };
+    button.addEventListener('pointerup', release);
+    button.addEventListener('pointercancel', release);
+    button.addEventListener('lostpointercapture', release);
+    controls.append(button);
+  }
+  mount.append(controls);
+}
+try {
+  if (!game) throw new Error('Unknown game');
+  const manifestResponse = await fetch('mod-manifest.json');
+  if (!manifestResponse.ok) throw new Error('Build manifest unavailable');
+  const manifest = (await manifestResponse.json())[game.id];
+  if (!/^[a-f0-9]{64}$/.test(manifest?.sha256)) throw new Error('Invalid game build');
+  const response = await fetch(`${game.binary}?v=${manifest.sha256}`);
+  if (!response.ok) throw new Error('Game binary unavailable');
+  const bytes = await response.arrayBuffer();
+  const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(byte => byte.toString(16).padStart(2, '0')).join('');
+  if (digest !== manifest.sha256) throw new Error('Game binary does not match this build');
+  const result = await WebAssembly.instantiate(bytes, { arcade: {
+    rect: (...args) => rectangles.push(args),
+    text: (x, y, pointer) => {
+      const memory = new Uint8Array(runtime.memory.buffer);
+      let end = pointer;
+      while (end < memory.length && memory[end]) end++;
+      labels.push([x, y, new TextDecoder().decode(memory.subarray(pointer, end))]);
+    },
+  } });
+  runtime = result.instance.exports;
+  font = new Image();
+  font.src = 'assets/debug-font.png';
+  await font.decode();
+  mount.replaceChildren(canvas);
+  if (touchControls) addTouchControls();
+  runtime.game_init();
+  applyMods(game, defaultMods(), runtime);
+  draw();
+  ready = true;
+  canvas.focus();
+  send('arcade-started');
+  requestAnimationFrame(animate);
+} catch (error) {
+  console.error('Game load failed:', error);
+  ready = false;
   send('arcade-error');
   const message = document.createElement('p');
   message.id = 'message';
   message.textContent = 'The game could not load. Check your connection, then use Restart above the controls to try again.';
-  document.getElementById('game').replaceChildren(message);
-}
-if (!game) failed();
-else {
-  Object.assign(window, {
-    EJS_player: '#game', EJS_core: 'pcsx_rearmed',
-    EJS_gameUrl: new URL(game.rom + (manifest ? `?v=${manifest.sha256}` : ''), location.href).href,
-    EJS_gameName: game.id, EJS_gameID: games.indexOf(game) + 1,
-    EJS_pathtodata: EMULATOR_DATA,
-    EJS_startOnLoaded: true, EJS_color: game.color,
-    EJS_backgroundColor: '#121422', EJS_threads: false,
-    EJS_disableDatabases: true, EJS_disableAutoLang: true,
-    EJS_volume: 0.5, EJS_startButtonName: 'Start game',
-    EJS_defaultOptions: { 'virtual-gamepad': touchControls ? 'enabled' : 'disabled' },
-    EJS_VirtualGamepadSettings: [
-      { type: 'dpad', location: 'left', left: '50%', right: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
-      { type: 'button', text: '×', id: 'cross', location: 'right', left: 40, top: 40, bold: true, input_value: 0 },
-      { type: 'button', text: 'Start', id: 'start', location: 'center', left: 60, fontSize: 14, block: true, input_value: 3 },
-      { type: 'button', text: 'Reset', id: 'select', location: 'center', left: -5, fontSize: 14, block: true, input_value: 2 },
-    ],
-    EJS_defaultControls: { 0: {
-      0: { value: 'x', value2: 'BUTTON_2' },
-      1: { value: 's', value2: 'BUTTON_4' },
-      2: { value: 'v', value2: 'SELECT' },
-      3: { value: 'enter', value2: 'START' },
-      4: { value: 'up arrow', value2: 'DPAD_UP' },
-      5: { value: 'down arrow', value2: 'DPAD_DOWN' },
-      6: { value: 'left arrow', value2: 'DPAD_LEFT' },
-      7: { value: 'right arrow', value2: 'DPAD_RIGHT' },
-      8: { value: 'z', value2: 'BUTTON_1' },
-      9: { value: 'a', value2: 'BUTTON_3' },
-    }, 1: {}, 2: {}, 3: {} },
-    EJS_onGameStart: () => {
-      ready = true;
-      // Pinned 4.2.3 opens its menu on startup, covering the touch controls.
-      // Keep it available via the menu button, but start with the game visible.
-      window.EJS_emulator.menu.close();
-      if (touchControls) {
-        // The pinned player's resize pass schedules a hide after 250 ms when
-        // its own touch probe fails. Apply our capability result after that.
-        setTimeout(() => {
-          window.EJS_emulator.toggleVirtualGamepad(true);
-          send('arcade-started');
-        }, 300);
-      } else send('arcade-started');
-    },
-    EJS_onLoadState: () => send('arcade-started'),
-  });
-  const loader = document.createElement('script');
-  loader.src = EMULATOR_DATA + 'loader.js';
-  loader.onerror = failed;
-  document.body.append(loader);
+  mount.replaceChildren(message);
 }

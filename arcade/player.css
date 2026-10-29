@@ -1,0 +1,11 @@
+html,body,#game{margin:0;width:100%;height:100%;background:#121422;color:#f5f0e6;font:14px system-ui;overflow:hidden}
+#game{display:flex;align-items:center;justify-content:center;position:relative}
+#message{padding:24px;line-height:1.7}
+canvas{display:block;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;outline:none;touch-action:none}
+#touch-controls{position:absolute;inset:0;pointer-events:none}
+#touch-controls button{position:absolute;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;width:44px;height:44px;border:1px solid #ffffff65;border-radius:12px;color:white;background:#202538b8;font:bold 21px system-ui;padding:0}
+#touch-controls button.pressed{background:#ff865b;color:#121422}
+#pad-up{bottom:104px;left:56px}#pad-left{bottom:56px;left:8px}#pad-down{bottom:8px;left:56px}#pad-right{bottom:56px;left:104px}
+#touch-controls #pad-cross{right:18px;bottom:48px;width:58px;height:58px;font-size:34px;border-radius:50%}
+#touch-controls #pad-select{left:calc(50% - 50px);bottom:8px;font-size:11px}
+#touch-controls #pad-start{left:calc(50% + 2px);bottom:8px;font-size:11px}

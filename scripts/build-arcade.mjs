@@ -13,27 +13,28 @@ await mkdir('dist/games', { recursive: true });
 await cp('arcade', 'dist', { recursive: true });
 const manifest = {};
 for (const game of games.filter(game => game.available)) {
-  const source = `out/arcade-demos/${game.id}.exe`;
+  const source = `out/arcade-demos/${game.id}.wasm`;
   const bytes = await readFile(source);
-  if (bytes.subarray(0, 8).toString() !== 'PS-X EXE') throw new Error(`${source} is not a PS1 executable`);
-  const symbolText = await readFile(`out/arcade-demos/${game.id}.sym`, 'utf8');
-  const symbols = {};
-  for (const [name, expected] of Object.entries(modWrites(game, defaultMods()))) {
-    const match = symbolText.match(new RegExp(`^([0-9a-fA-F]+) [Dd] ${name}$`, 'm'));
-    if (!match) throw new Error(`Missing mod symbol: ${game.id}/${name}`);
-    // This SDK's nm sign-extends 32-bit MIPS addresses to 64 bits.
-    const address = Number(BigInt('0x' + match[1]) & 0xffffffffn);
-    const offset = address - bytes.readUInt32LE(0x18) + 2048;
-    if (address < 0x80000000 || address >= 0x80200000 || address % 4 || offset < 2048 ||
-        offset + 4 > bytes.length || bytes.readUInt32LE(offset) !== expected) throw new Error(`Mod symbol does not match executable: ${name}`);
-    symbols[name] = address;
+  if (!WebAssembly.validate(bytes)) throw new Error(`${source} is not a WebAssembly module`);
+  const module = await WebAssembly.compile(bytes);
+  const imports = WebAssembly.Module.imports(module);
+  if (imports.length !== 2 || imports.some(item => item.module !== 'arcade' || item.kind !== 'function' || !['rect', 'text'].includes(item.name))) throw new Error('Unexpected game runtime dependency');
+  const { exports } = await WebAssembly.instantiate(module, { arcade: { rect() {}, text() {} } });
+  for (const name of ['game_init', 'game_tick', 'game_render']) {
+    if (typeof exports[name] !== 'function') throw new Error(`Missing game export: ${name}`);
   }
-  manifest[game.id] = { symbols, sha256: createHash('sha256').update(bytes).digest('hex') };
-  await writeFile(`dist/${game.rom}`, bytes);
+  const memory = new DataView(exports.memory.buffer);
+  for (const [name, expected] of Object.entries(modWrites(game, defaultMods()))) {
+    const address = exports[name]?.value;
+    if (!Number.isInteger(address) || address < 0 || address % 4 || address + 4 > memory.byteLength ||
+        memory.getInt32(address, true) !== expected) throw new Error(`Invalid mod export: ${game.id}/${name}`);
+  }
+  manifest[game.id] = { sha256: createHash('sha256').update(bytes).digest('hex') };
+  await writeFile(`dist/${game.binary}`, bytes);
 }
 await writeFile('dist/mod-manifest.json', JSON.stringify(manifest, null, 2) + '\n');
 await mkdir('dist/licenses', { recursive: true });
 await cp('demos/LICENSE', 'dist/licenses/demos-MIT.txt');
 await cp('demos/PSn00bSDK-LICENSE.txt', 'dist/licenses/PSn00bSDK.txt');
 await writeFile('dist/.nojekyll', '');
-console.log('Built dist/ with two original PS1 homebrew executables. No commercial game assets included.');
+console.log('Built dist/ with two directly compiled WebAssembly games. No commercial game assets included.');

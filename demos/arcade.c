@@ -1,9 +1,11 @@
 /* Original PS1 arcade demos. MIT license: see LICENSE.
- * Built against the unmodified, MPL-2.0-licensed PSn00bSDK v0.24.
+ * Compile directly to WebAssembly, or build for PS1 with PSn00bSDK v0.24.
  * No Sony SDK, commercial game assets or BIOS image are included.
  */
 #include <stdint.h>
-#include <stdio.h>
+#ifdef __wasm__
+#include "web.h"
+#else
 #include <psxgpu.h>
 #include <psxapi.h>
 #include <psxpad.h>
@@ -15,8 +17,9 @@ static uint8_t packets[2][32768];
 static uint8_t *next;
 static int frame;
 static uint8_t pad1[34], pad2[34];
+#endif
 
-/* Live mods patch these globals through the emulator cheat API. */
+/* Live mods write these exported globals in WebAssembly linear memory. */
 volatile int paddle_width = 48;
 volatile int paddle_height = 40;
 volatile int paddle_speed = 4;
@@ -27,6 +30,7 @@ static int bx, by, vx, vy, paddle, rival, score, other, lives, waiting, over;
 static int bricks[5][8], remaining;
 
 static int clamp(int n, int lo, int hi) { return n < lo ? lo : n > hi ? hi : n; }
+#ifndef __wasm__
 static void rect(int x, int y, int w, int h, int r, int g, int b) {
     TILE *t = (TILE *)next;
     next += sizeof(TILE);
@@ -35,6 +39,21 @@ static void rect(int x, int y, int w, int h, int r, int g, int b) {
 }
 static void text(int x, int y, const char *s) {
     next = (uint8_t *)FntSort(&order[frame][0], next, x, y, s);
+}
+#endif
+static char *append(char *out, const char *s) {
+    while (*s) *out++ = *s++;
+    *out = 0;
+    return out;
+}
+static char *number(char *out, int n, int width) {
+    char digits[12];
+    int count = 0;
+    do { digits[count++] = '0' + n % 10; n /= 10; } while (n);
+    while (count < width) digits[count++] = '0';
+    while (count) *out++ = digits[--count];
+    *out = 0;
+    return out;
 }
 static void serve(void) {
     waiting = 1; ball_clock = 0;
@@ -119,14 +138,17 @@ static void render(int paused) {
     rect(10, 32, 300, 2, 62, 67, 85);
     rect(10, 222, 300, 2, 62, 67, 85);
     if (GAME_BRICKS) {
-        snprintf(line, sizeof(line), "BRICK SHIFT   %03d       LIVES %d", score, lives);
+        char *end = number(append(line, "BRICK SHIFT   "), score, 3);
+        number(append(end, "       LIVES "), lives, 1);
         text(16, 14, line);
         for (int y = 0; y < 5; y++) for (int x = 0; x < 8; x++) if (bricks[y][x]) {
             rect(16 + x * 36, 48 + y * 16, 32, 12, 250 - y * 25, 100 + y * 24, 80 + y * 32);
         }
         rect(paddle, 210, paddle_width, 7, accent_red, accent_green, accent_blue);
     } else {
-        snprintf(line, sizeof(line), "PADDLE RALLY    YOU %d  :  %d CPU", score, other);
+        char *end = number(append(line, "PADDLE RALLY    YOU "), score, 1);
+        end = number(append(end, "  :  "), other, 1);
+        append(end, " CPU");
         text(16, 14, line);
         for (int y = 40; y < 220; y += 15) rect(159, y, 2, 7, 48, 53, 72);
         rect(21, paddle, 7, paddle_height, accent_red, accent_green, accent_blue);
@@ -139,6 +161,23 @@ static void render(int paused) {
         text(80, 168, "CROSS TO PLAY AGAIN");
     } else if (waiting) text(88, 160, "CROSS TO LAUNCH");
 }
+#ifdef __wasm__
+static uint16_t previous;
+static int paused;
+__attribute__((export_name("game_init"))) void game_init(void) {
+    previous = 0; paused = 0; reset();
+}
+__attribute__((export_name("game_tick"))) void game_tick(uint16_t held) {
+    uint16_t pressed = held & ~previous;
+    previous = held;
+    if (pressed & PAD_START) paused = !paused;
+    if (pressed & PAD_SELECT) { reset(); paused = 0; }
+    if (!paused) update(held, pressed);
+}
+__attribute__((export_name("game_render"))) void game_render(void) {
+    render(paused);
+}
+#else
 int main(void) {
     ResetGraph(0); SetVideoMode(MODE_NTSC); FntLoad(960, 0);
     for (int i = 0; i < 2; i++) {
@@ -166,3 +205,4 @@ int main(void) {
         frame ^= 1;
     }
 }
+#endif

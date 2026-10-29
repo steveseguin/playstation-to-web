@@ -1,4 +1,4 @@
-// Curated game-memory edits only. Addresses come from each matching PS1 build.
+// Curated game-memory edits. Addresses are exports of the loaded Wasm module.
 export const modDefinitions = [
   { id: 'color', label: 'Paddle color', default: 'original', options: [
     { id: 'original', label: 'Original orange', values: [255, 125, 74] },
@@ -20,7 +20,7 @@ export const modDefinitions = [
 export const defaultMods = () => Object.fromEntries(modDefinitions.map(mod => [mod.id, mod.default]));
 
 export function modWrites(game, selection) {
-  if (!game.available || game.engine !== 'emulator' || !selection ||
+  if (!game.available || game.engine !== 'wasm' || !selection ||
       Object.keys(selection).sort().join() !== game.mods.slice().sort().join()) throw new Error('Invalid mod selection');
   const options = Object.fromEntries(modDefinitions.map(mod => {
     const option = mod.options.find(option => option.id === selection[mod.id]);
@@ -34,12 +34,12 @@ export function modWrites(game, selection) {
   };
 }
 
-export function cheatCodes(game, selection, symbols) {
-  return Object.entries(modWrites(game, selection)).map(([name, value]) => {
-    const address = symbols[name];
-    if (!Number.isInteger(address) || address < 0x80000000 || address >= 0x80200000 || address % 4) throw new Error('Invalid mod address');
-    // GameShark 80 writes the low 16 bits. These nonnegative int globals have
-    // zero upper halves and are only ever written by this curated mod bridge.
-    return `${address.toString(16).toUpperCase()} ${value.toString(16).padStart(4, '0').toUpperCase()}`;
+export function applyMods(game, selection, exports) {
+  const memory = new DataView(exports.memory.buffer);
+  const writes = Object.entries(modWrites(game, selection)).map(([name, value]) => {
+    const address = exports[name]?.value;
+    if (!Number.isInteger(address) || address < 0 || address % 4 || address + 4 > memory.byteLength) throw new Error('Invalid mod export');
+    return [address, value];
   });
+  for (const [address, value] of writes) memory.setInt32(address, value, true);
 }

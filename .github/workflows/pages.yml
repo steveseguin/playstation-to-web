@@ -23,12 +23,11 @@ jobs:
           cache: npm
       - name: Install browser test tools
         run: npm ci --ignore-scripts
-      - name: Cache open PS1 toolchain
-        uses: actions/cache@v4
-        with:
-          path: .toolchain/arcade
-          key: psn00bsdk-linux-v0.24-5ada7c94
+      - name: Install WebAssembly compiler
+        run: sudo apt-get update && sudo apt-get install -y clang-18 lld-18
       - name: Build original homebrew demos
+        env:
+          CLANG: clang-18
         run: bash scripts/build-demos.sh
       - name: Package the arcade
         run: npm run build

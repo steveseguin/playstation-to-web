@@ -53,9 +53,9 @@ function select(game, updateHistory = true) {
   $('play').innerHTML = game.available ? '<span aria-hidden="true">▶</span> Play now' : '<span aria-hidden="true">↗</span> Build & play';
   $('play-note').textContent = game.available ? 'Free homebrew · No download or disc needed' : 'Requires your own compiled build and matching disc';
   $('screen-kicker').textContent = game.available ? "PLAYER ONE, YOU'RE UP" : 'BRING YOUR OWN ADVENTURE';
-  $('engine-label').textContent = game.engine === 'emulator' ? 'PS1 HOMEBREW · EMULATOR' : 'PSXW · COMPILED GAME';
-  $('engine-note').textContent = game.engine === 'emulator'
-    ? 'These original PS1 homebrew demos use EmulatorJS. They are not yet compiled with psxw.'
+  $('engine-label').textContent = game.engine === 'wasm' ? 'HOMEBREW · COMPILED WASM' : 'PSXW · COMPILED GAME';
+  $('engine-note').textContent = game.engine === 'wasm'
+    ? 'These original homebrew games compile directly from C to WebAssembly, with live mods and no emulator.'
     : 'This game runs through the psxw compiler. Commercial game code and assets are not hosted here.';
   $('mod-count').textContent = game.mods.length;
   $('controls-list').replaceChildren();
@@ -95,7 +95,7 @@ function play() {
   $('restart').disabled = $('stop').disabled = false;
   $('session-label').textContent = 'LOADING THE GOOD STUFF';
   status('Loading the player and game. The first visit may take a moment…');
-  loadTimer = setTimeout(() => status('Still loading? The player downloads from EmulatorJS. Check your connection, or press Restart to try again.', true), 60000);
+  loadTimer = setTimeout(() => status('Still loading? Check your connection, or press Restart to try again.', true), 60000);
 }
 
 addEventListener('message', event => {

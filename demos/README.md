@@ -1,19 +1,15 @@
-# Free PS1 arcade demos
+# Free homebrew arcade
 
-> This is a fork of [dpchamps-vibe-city/psx-wasm](https://github.com/dpchamps-vibe-city/psx-wasm), the original project.
-
-**Paddle Rally** (paddle vs. computer, first to seven) and **Brick Shift**
-(40-brick breakout, three lives) are original homebrew games created for this
-project with AI coding assistance. Both compile from `arcade.c` into real PS1
-executables. The source is [MIT licensed](LICENSE).
-
-They use unmodified PSn00bSDK 0.24 libraries and its included debug font, under
-[MPL 2.0](PSn00bSDK-LICENSE.txt). All other graphics are colored primitives.
-There are no commercial game assets, Sony SDK files, or Sony BIOS images.
+Play **Paddle Rally** (paddle vs. computer, first to seven) and **Brick Shift**
+(40-brick breakout, three lives) in the browser. Both games compile directly
+from [arcade.c](arcade.c) into WebAssembly. Their rules, physics, score, and
+live mod values run in the compiled game. No emulator, BIOS, or disc is needed.
+The same source also supports PS1 builds.
 
 ## Build and play
 
-On Linux, with CMake, curl, unzip, and Node.js 22 installed:
+On Ubuntu or Debian, install Clang and LLD (`sudo apt-get install clang lld`),
+and Node.js 22, then run from the repository root:
 
 ```sh
 bash scripts/build-demos.sh
@@ -23,57 +19,46 @@ npm run dev
 ```
 
 On Windows, run the first command through WSL, then run the npm commands in
-PowerShell. Open `http://127.0.0.1:4173`. The SDK download is pinned to a version
-and SHA-256. Generated executables stay in ignored `out/` and `dist/` directories.
-The Pages workflow rebuilds them from this source; it publishes only `dist/`.
+PowerShell. Open `http://127.0.0.1:4173`. Set `CLANG` to select a different Clang
+executable. Builds run sequentially with one linker thread.
 
-These demos currently run through **EmulatorJS 4.2.3 / PCSX-ReARMed**, with the
-core's BIOS replacement and no uploaded BIOS. This is an interim playable demo
-path, **not a demonstration of psxw recompilation**. The renderer and libraries
-would need porting before these games can use psxw's JavaScript mod system.
-The existing compiler and single-game host in `web/` continue to work separately.
+The build produces `paddle-rally.wasm` and `brick-shift.wasm` in
+`out/arcade-demos/`; packaging copies them into `dist/games/`. The Pages workflow
+builds and publishes `dist/`. All player assets are served with the arcade.
 
-## Controls
+For optional PS1 executables, run `bash scripts/build-ps1-demos.sh` on Linux or
+WSL with CMake, curl, and unzip installed. It downloads the version and
+SHA-256-pinned PSn00bSDK 0.24 toolchain. The browser uses the Wasm builds.
+
+## Controls and live mods
 
 - Paddle Rally: Up/Down to move.
 - Brick Shift: Left/Right to move.
-- Both: X (PS1 Cross) to launch or play again, Enter (Start) to pause,
-  V (Select) for a new game. Gamepad and emulator touch controls are available.
+- Both: X to launch or play again, Enter to pause, V for a new game.
+- Standard gamepads: D-pad or left stick to move, bottom face button to launch,
+  Start to pause, Select/Back for a new game. Touch controls appear on mobile.
 - No sound effects are implemented yet.
 
-## Mods
+Open **Apply mod** during play to change paddle color, paddle size, or ball
+speed. **Apply changes** takes effect immediately; **Restore defaults** puts
+the original settings back without restarting. The panel itself does not pause
+play. In-game New game keeps mods; Restart or switching games clears them.
 
-Both demos support live paddle color, paddle size, and ball speed changes.
-Start a game, open **Apply mod**, choose settings, and press **Apply changes**.
-**Restore defaults** restores the original values without restarting. Restarting
-or switching games clears the session's mods. Enter / Start pauses gameplay;
-the mod panel itself does not pause it. In-game New game keeps your mods.
+The player writes reviewed settings into exported globals in the running
+module's WebAssembly memory. It uses the loaded module's own symbol addresses
+and verifies the binary's build hash. Ball speed changes physics steps only;
+paddle input stays responsive and collisions are checked at each step.
 
-These are real PS1 RAM edits using the pinned EmulatorJS 4.2.3
-[`GameManager.setCheat`](https://github.com/EmulatorJS/EmulatorJS/blob/v4.2.3/data/src/GameManager.js)
-API and PCSX-ReARMed GameShark codes. `arcade/mods.js` defines reviewed options.
-The build reads the matching ELF symbols, validates each default against the
-executable, and generates `mod-manifest.json`. Executable URLs include a build
-hash so a cached older binary cannot receive a newer build's addresses.
-The player accepts only catalog options from its same-origin parent frame.
-Restoring defaults writes the original values back, because disabling a cheat
-alone would leave changed RAM behind. Ball speed changes physics steps only;
-paddle input stays responsive and collision checks still run at each step.
+The homebrew builds use Clang directly. Games built through `psxw` have their
+own [JavaScript mod tools](../web/README.md#script-mods).
 
-This bridge is specific to these homebrew games. Arbitrary text editing and
-JavaScript hooks are not exposed in the hosted demos. Compiled psxw games use
-the separate [JavaScript mod system](../web/README.md#script-mods).
+## Source and licenses
 
-## Validation
+The original games and geometric title-card artwork were created for this
+project with AI coding assistance and are [MIT licensed](LICENSE). The artwork
+is not a screenshot. There are no commercial game assets or Sony SDK files.
 
-`npm test` checks the packaged PS1 headers, catalog, assets, and licenses.
-`npx playwright install chromium` followed by `npm run test:browser` verifies
-that both games boot, respond to keyboard input, and animate. It compares the
-actual PS1 framebuffer before/after color and size mods, checks speed values
-in saved PS1 RAM, verifies restoration, and exercises desktop and touch mod
-controls, game switching, and mobile layout. Browser tests need
-network access to the versioned EmulatorJS CDN. `ARCADE_URL` can point the same
-browser checks at a deployed site.
-
-The arcade's title-card illustrations are original geometric SVGs generated by
-`arcade/art.js`, not screenshots of the games. They are also MIT licensed.
+The browser includes the unmodified `libpsn00b/psxgpu/dbugfont.png` from
+[PSn00bSDK v0.24](https://github.com/Lameguy64/PSn00bSDK/tree/v0.24), under
+[MPL 2.0](PSn00bSDK-LICENSE.txt). Optional PS1 builds also link its libraries.
+The arcade includes the font's license and source link in its credits.
