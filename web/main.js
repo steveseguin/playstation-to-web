@@ -390,17 +390,27 @@ discInput.addEventListener("change", async () => {
 // Cards are read when the game starts and written as it saves: importing
 // one into a running game would be overwritten, so only before Start.
 let running = false;
+let pendingCardImports = 0;
 for (const slot of [0, 1]) {
   const input = document.getElementById(`card${slot}`);
   input.addEventListener("change", async () => {
+    if (running) {
+      say("Error: import cards before pressing Start");
+      input.value = "";
+      return;
+    }
+    const file = input.files[0];
+    if (!file) return;
+    pendingCardImports++;
     try {
-      if (running) throw new Error("import cards before pressing Start");
-      await importCard(slot, new Uint8Array(await input.files[0].arrayBuffer()));
-      say(`imported ${input.files[0].name} into slot ${slot + 1}`);
+      await importCard(slot, new Uint8Array(await file.arrayBuffer()));
+      say(`imported ${file.name} into slot ${slot + 1}`);
     } catch (e) {
       say(String(e));
+    } finally {
+      pendingCardImports--;
+      input.value = "";
     }
-    input.value = "";
   });
   document.getElementById(`export${slot}`).addEventListener("click", async () => {
     const bytes = saves.latest.get(cardName(slot)) || (await exportCard(slot));
@@ -415,6 +425,9 @@ for (const slot of [0, 1]) {
 
 renderMods();
 startButton.addEventListener("click", async () => {
+  // The Worker snapshots saves once at startup. A late import could otherwise
+  // replace OPFS after that snapshot and then be overwritten by the old card.
+  if (pendingCardImports) return say("Wait for memory-card imports to finish before pressing Start");
   startButton.disabled = true;
   running = true;
   renderMods();
